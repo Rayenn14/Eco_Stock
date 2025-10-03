@@ -4,11 +4,11 @@
     "slug": "EcoStock2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/EcoStockLogo.png",
+    "icon": "./assets/images/EcoStockLogo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/EcoStockLogo.png",
+      "image": "./assets/images/EcoStockLogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,14 +17,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/EcoStockLogo.png",
+        "foregroundImage": "./assets/images/EcoStockLogo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/EcoStockLogo.png"
+      "favicon": "./assets/images/EcoStockLogo.png"
     }
   }
 }
