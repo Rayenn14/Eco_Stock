@@ -1,1 +1,1 @@
-PS : Le web n'est pas prioritère donc generé pour tester le back
+PS : Le front generé juste pour tester le back
