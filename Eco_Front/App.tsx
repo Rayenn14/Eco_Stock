@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setTokenExpiredHandler } from './src/services/api';
 
 import { SplashScreen } from './src/screens/SplashScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -18,6 +19,8 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
+    // Configurer le handler pour la déconnexion automatique lors de l'expiration du token
+    setTokenExpiredHandler(handleLogout);
     checkAuth();
   }, []);
 
