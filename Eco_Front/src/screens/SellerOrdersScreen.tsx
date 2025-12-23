@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  AlertButton,
 } from 'react-native';
 import * as API from '../services/api';
 import { styles } from './SellerOrdersScreen.styles';
@@ -73,7 +74,7 @@ export const SellerOrdersScreen: React.FC<SellerOrdersScreenProps> = ({
       { label: 'Annulée', value: 'annulee' },
     ];
 
-    const buttons = statusOptions.map((option) => ({
+    const buttons: AlertButton[] = statusOptions.map((option) => ({
       text: option.label + (option.value === currentStatus ? ' ✓' : ''),
       onPress: async () => {
         if (option.value === currentStatus) return;
@@ -92,9 +93,13 @@ export const SellerOrdersScreen: React.FC<SellerOrdersScreenProps> = ({
       },
     }));
 
-    buttons.push({ text: 'Annuler', onPress: () => {}, style: 'cancel' });
+    buttons.push({ 
+      text: 'Annuler', 
+      onPress: () => {},
+      style: 'cancel'
+    });
 
-    Alert.alert('Changer le statut', 'Selectionnez le nouveau statut', buttons);
+    Alert.alert('Changer le statut', 'Sélectionnez le nouveau statut', buttons);
   };
 
   const formatDate = (dateString: string) => {
@@ -248,7 +253,7 @@ export const SellerOrdersScreen: React.FC<SellerOrdersScreenProps> = ({
           <Text style={styles.emptyIcon}>📦</Text>
           <Text style={styles.emptyText}>Aucune commande</Text>
           <Text style={styles.emptySubtext}>
-            Les commandes de vos clients apparaitront ici
+            Les commandes de vos clients apparaîtront ici
           </Text>
         </ScrollView>
       ) : (
