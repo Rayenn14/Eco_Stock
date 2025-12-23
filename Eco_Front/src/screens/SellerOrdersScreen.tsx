@@ -248,7 +248,7 @@ export const SellerOrdersScreen: React.FC<SellerOrdersScreenProps> = ({
           <Text style={styles.emptyIcon}>📦</Text>
           <Text style={styles.emptyText}>Aucune commande</Text>
           <Text style={styles.emptySubtext}>
-            Les commandes de vos clients apparaîtront ici
+            Les commandes de vos clients apparaitront ici
           </Text>
         </ScrollView>
       ) : (
