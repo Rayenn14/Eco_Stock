@@ -1,6 +1,7 @@
 # EcoStock - Plateforme Anti-Gaspillage
 
-Application mobile permettant aux commerçants de vendre leurs invendus à prix réduit, aux associations de récupérer des produits, et aux clients d'acheter malin.
+Application mobile permettant aux commerçants de vendre leurs invendus à prix réduit, aux associations de récupérer des produits, et aux clients d'acheter pas chère
+.
 
 ---
 
