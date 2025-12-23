@@ -94,7 +94,7 @@ export const SellerOrdersScreen: React.FC<SellerOrdersScreenProps> = ({
 
     buttons.push({ text: 'Annuler', onPress: () => {} });
 
-    Alert.alert('Changer le statut', 'Sélectionnez le nouveau statut', buttons);
+    Alert.alert('Changer le statut', 'Selectionnez le nouveau statut', buttons);
   };
 
   const formatDate = (dateString: string) => {
