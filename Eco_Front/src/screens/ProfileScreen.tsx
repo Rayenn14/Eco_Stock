@@ -1,0 +1,211 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { styles } from './ProfileScreen.styles';
+
+interface ProfileScreenProps {
+  onNavigatePersonalInfo: () => void;
+  onNavigatePaymentMethods: () => void;
+  onNavigateBack: () => void;
+  onLogout: () => void;
+}
+
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  onNavigatePersonalInfo,
+  onNavigatePaymentMethods,
+  onNavigateBack,
+  onLogout,
+}) => {
+  const [user, setUser] = useState<any>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      const savedImage = await AsyncStorage.getItem('profileImage');
+
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+      if (savedImage) {
+        setProfileImage(savedImage);
+      }
+    } catch (error) {
+      console.error('Erreur chargement utilisateur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      // Demander la permission d'accéder à la galerie
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          'Nous avons besoin de votre permission pour accéder à vos photos.'
+        );
+        return;
+      }
+
+      // Ouvrir la galerie
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setProfileImage(imageUri);
+
+        // Sauvegarder temporairement dans AsyncStorage
+        // TODO: Uploader vers le serveur
+        await AsyncStorage.setItem('profileImage', imageUri);
+
+        Alert.alert('Succès', 'Photo de profil mise à jour !');
+      }
+    } catch (error) {
+      console.error('Erreur sélection image:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner une image');
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vraiment vous déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Déconnexion', onPress: onLogout, style: 'destructive' },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#166534" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profil</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Photo de profil */}
+        <View style={styles.profileImageContainer}>
+          <TouchableOpacity onPress={handlePickImage} style={styles.imageWrapper}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <View style={styles.placeholderIconShape}>
+                  <View style={styles.placeholderHead} />
+                  <View style={styles.placeholderBody} />
+                </View>
+              </View>
+            )}
+            <View style={styles.editBadge}>
+              <View style={styles.editIcon}>
+                <View style={styles.pencilBody} />
+                <View style={styles.pencilTip} />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Nom utilisateur */}
+        <Text style={styles.userName}>
+          {user?.prenom} {user?.nom}
+        </Text>
+        <Text style={styles.userEmail}>{user?.email}</Text>
+
+        {/* Menu options */}
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={onNavigatePersonalInfo}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
+                <Text style={styles.menuIconText}>👤</Text>
+              </View>
+              <Text style={styles.menuItemText}>Informations personnelles</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={styles.menuIconText}>📦</Text>
+              </View>
+              <Text style={styles.menuItemText}>Mes commandes</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={onNavigatePaymentMethods}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#D1FAE5' }]}>
+                <Text style={styles.menuIconText}>💳</Text>
+              </View>
+              <Text style={styles.menuItemText}>Méthodes de paiement</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E0E7FF' }]}>
+                <Text style={styles.menuIconText}>⚙️</Text>
+              </View>
+              <Text style={styles.menuItemText}>Paramètres</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bouton déconnexion */}
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutButtonText}>Déconnexion</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+};

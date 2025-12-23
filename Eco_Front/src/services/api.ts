@@ -1,21 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
-// ⚠️ TROUVEZ VOTRE IP AVEC: ipconfig
-// Cherchez "Adresse IPv4" (exemple: 192.168.1.45)
 const API_URL = 'http://192.168.137.1:3000/api';
 
-console.log('⚙️ API_URL configurée:', API_URL);
-
-// Variable pour stocker la fonction de redirection vers le login
 let onTokenExpired: (() => void) | null = null;
 
-// Permet de définir la fonction de redirection depuis App.tsx
 export const setTokenExpiredHandler = (handler: () => void) => {
   onTokenExpired = handler;
 };
 
-// Helper pour obtenir les headers avec le token JWT
 const getHeaders = async () => {
   const token = await AsyncStorage.getItem('token');
   return {
@@ -24,26 +17,21 @@ const getHeaders = async () => {
   };
 };
 
-// Helper pour gérer les réponses API et détecter l'expiration du token
 const handleApiResponse = async (response: Response) => {
   const data = await response.json();
 
-  // Détecter si le token a expiré
   if (response.status === 403 && (data.message === 'Token expiré' || data.message === 'Token invalide')) {
-    console.warn('🔴 Token expiré - Déconnexion...');
+    console.warn('Token expired');
 
-    // Supprimer le token et les données utilisateur
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
 
-    // Afficher un message
     Alert.alert(
       'Session expirée',
       'Votre session a expiré. Veuillez vous reconnecter.',
       [{ text: 'OK' }]
     );
 
-    // Rediriger vers le login si le handler est défini
     if (onTokenExpired) {
       onTokenExpired();
     }
@@ -54,9 +42,6 @@ const handleApiResponse = async (response: Response) => {
   return data;
 };
 
-// ========================================
-// API CONNEXION
-// ========================================
 export const login = async (email: string, password: string) => {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
@@ -66,7 +51,6 @@ export const login = async (email: string, password: string) => {
     });
     return await handleApiResponse(response);
   } catch (error) {
-    console.error('Erreur login:', error);
     if (error instanceof Error && error.message === 'Session expirée') {
       throw error;
     }
@@ -74,9 +58,6 @@ export const login = async (email: string, password: string) => {
   }
 };
 
-// ========================================
-// API INSCRIPTION
-// ========================================
 export const register = async (data: {
   prenom: string;
   nom: string;
@@ -84,40 +65,19 @@ export const register = async (data: {
   password: string;
   user_type: 'client' | 'vendeur' | 'association';
   nom_commerce?: string;
+  adresse_commerce?: string;
+  latitude?: string;
+  longitude?: string;
   nom_association?: string;
 }) => {
   try {
-    console.log('🔵 === DÉBUT INSCRIPTION ===');
-    console.log('🔵 URL:', `${API_URL}/auth/register`);
-    console.log('🔵 Données:', JSON.stringify(data, null, 2));
-    const fullUrl = `${API_URL}/auth/register`;
-    console.log('🟢 API_URL brut:', API_URL);
-    console.log('🟢 URL complète construite:', fullUrl);
-    
-    console.log('🔵 Données:', JSON.stringify(data, null, 2));
-    const headers = await getHeaders();
-    console.log('🔵 Headers:', headers);
-    
-    console.log('🔵 Envoi de la requête...');
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: headers,
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
-    
-    console.log('🔵 Statut HTTP:', response.status);
-    console.log('🔵 Status OK?', response.ok);
-
-    const result = await handleApiResponse(response);
-    console.log('🔵 Réponse reçue:', JSON.stringify(result, null, 2));
-    console.log('🔵 === FIN INSCRIPTION ===');
-
-    return result;
+    return await handleApiResponse(response);
   } catch (error) {
-    console.error('🔴 === ERREUR INSCRIPTION ===');
-    console.error('🔴 Type:', error);
-    console.error('🔴 Message:', error instanceof Error ? error.message : 'Erreur inconnue');
-    console.error('🔴 Stack:', error instanceof Error ? error.stack : '');
     if (error instanceof Error && error.message === 'Session expirée') {
       throw error;
     }
@@ -125,9 +85,6 @@ export const register = async (data: {
   }
 };
 
-// ========================================
-// API VÉRIFICATION TOKEN
-// ========================================
 export const verifyToken = async () => {
   try {
     const response = await fetch(`${API_URL}/auth/verify`, {
@@ -136,10 +93,63 @@ export const verifyToken = async () => {
     });
     return await handleApiResponse(response);
   } catch (error) {
-    console.error('Erreur verify:', error);
     if (error instanceof Error && error.message === 'Session expirée') {
       throw error;
     }
     throw new Error('Token invalide');
+  }
+};
+
+export const getProfile = async () => {
+  try {
+    const response = await fetch(`${API_URL}/profile`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer le profil');
+  }
+};
+
+export const updateProfile = async (data: {
+  prenom: string;
+  nom: string;
+  email: string;
+  phone?: string;
+  nom_commerce?: string;
+  nom_association?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_URL}/profile`, {
+      method: 'PUT',
+      headers: await getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de mettre à jour le profil');
+  }
+};
+
+export const uploadProfileImage = async (imageBase64: string) => {
+  try {
+    const response = await fetch(`${API_URL}/profile/upload-image`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify({ imageBase64 }),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible d\'uploader l\'image');
   }
 };

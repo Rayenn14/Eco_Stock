@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setTokenExpiredHandler } from './src/services/api';
@@ -8,10 +8,14 @@ import { SplashScreen } from './src/screens/SplashScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { SignupScreen } from './src/screens/SignupScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
-import { ValidationScreen } from './src/screens/ValidationScreen';
-import { TemporaryHomeScreen } from './src/screens/TemporaryHomeScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
+import { PersonalInfoScreen } from './src/screens/PersonalInfoScreen';
+import { PaymentMethodsScreen } from './src/screens/PaymentMethodsScreen';
+import { BottomNavBar } from './src/components/BottomNavBar';
 
-type Screen = 'splash' | 'login' | 'signup' | 'forgot' | 'validation' | 'home';
+type Screen = 'splash' | 'login' | 'signup' | 'forgot' | 'home' | 'profile' | 'personalInfo' | 'paymentMethods';
+type NavScreen = 'home' | 'search' | 'cart' | 'recipes' | 'profile';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -44,7 +48,7 @@ export default function App() {
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    setCurrentScreen('validation');
+    setCurrentScreen('home');
   };
 
   const handleLogout = async () => {
@@ -86,17 +90,47 @@ export default function App() {
       
       case 'forgot':
         return <ForgotPasswordScreen onNavigateLogin={() => setCurrentScreen('login')} />;
-      
-      case 'validation':
+
+      case 'home':
+      case 'profile':
         return (
-          <ValidationScreen
-            user={user}
-            onValidationComplete={() => setCurrentScreen('home')}
+          <View style={{ flex: 1 }}>
+            {currentScreen === 'home' ? (
+              <HomeScreen />
+            ) : (
+              <ProfileScreen
+                onNavigatePersonalInfo={() => setCurrentScreen('personalInfo')}
+                onNavigatePaymentMethods={() => setCurrentScreen('paymentMethods')}
+                onNavigateBack={() => setCurrentScreen('home')}
+                onLogout={handleLogout}
+              />
+            )}
+            <BottomNavBar
+              activeScreen={currentScreen as NavScreen}
+              onNavigate={(screen: NavScreen) => {
+                if (screen === 'home' || screen === 'profile') {
+                  setCurrentScreen(screen);
+                } else {
+                  Alert.alert('À venir', `La section ${screen} sera bientôt disponible`);
+                }
+              }}
+            />
+          </View>
+        );
+
+      case 'personalInfo':
+        return (
+          <PersonalInfoScreen
+            onNavigateBack={() => setCurrentScreen('profile')}
           />
         );
-      
-      case 'home':
-        return <TemporaryHomeScreen user={user} onLogout={handleLogout} />;
+
+      case 'paymentMethods':
+        return (
+          <PaymentMethodsScreen
+            onNavigateBack={() => setCurrentScreen('profile')}
+          />
+        );
     }
   };
 
