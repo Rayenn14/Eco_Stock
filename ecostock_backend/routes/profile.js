@@ -47,12 +47,11 @@ router.put('/', authenticateToken, async (req, res) => {
       email,
       phone,
       nom_commerce,
+      adresse_commerce,
       nom_association,
-      adresse_ligne1,
-      adresse_ligne2,
+      adresse,
       code_postal,
       ville,
-      pays
     } = req.body;
 
     // Validation
@@ -76,29 +75,25 @@ router.put('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Mettre à jour
+    // Mettre à jour l'utilisateur
     const result = await db.query(
       `UPDATE users
        SET prenom = $1, nom = $2, email = $3, phone = $4,
-           nom_commerce = $5, nom_association = $6,
-           adresse_ligne1 = $7, adresse_ligne2 = $8,
-           code_postal = $9, ville = $10, pays = $11,
+           nom_association = $5, adresse = $6,
+           code_postal = $7, ville = $8,
            updated_at = NOW()
-       WHERE id = $12
-       RETURNING id, prenom, nom, email, phone, user_type, nom_commerce, nom_association,
-                 adresse_ligne1, adresse_ligne2, code_postal, ville, pays, profile_image`,
+       WHERE id = $9
+       RETURNING id, prenom, nom, email, phone, user_type, nom_association,
+                 adresse, code_postal, ville, profile_image`,
       [
         prenom,
         nom,
         email,
         phone || null,
-        nom_commerce || null,
         nom_association || null,
-        adresse_ligne1 || null,
-        adresse_ligne2 || null,
+        adresse || null,
         code_postal || null,
         ville || null,
-        pays || 'France',
         userId
       ]
     );
@@ -110,10 +105,42 @@ router.put('/', authenticateToken, async (req, res) => {
       });
     }
 
+    const user = result.rows[0];
+
+    // Si l'utilisateur est un vendeur, mettre à jour la table commerces
+    if (user.user_type === 'vendeur' && nom_commerce && adresse_commerce) {
+      // Vérifier si le commerce existe déjà
+      const commerceCheck = await db.query(
+        'SELECT id FROM commerces WHERE vendeur_id = $1',
+        [userId]
+      );
+
+      if (commerceCheck.rows.length > 0) {
+        // Mise à jour du commerce existant
+        await db.query(
+          `UPDATE commerces
+           SET nom_commerce = $1, adresse = $2, updated_at = NOW()
+           WHERE vendeur_id = $3`,
+          [nom_commerce, adresse_commerce, userId]
+        );
+      } else {
+        // Création d'un nouveau commerce
+        await db.query(
+          `INSERT INTO commerces (vendeur_id, nom_commerce, adresse)
+           VALUES ($1, $2, $3)`,
+          [userId, nom_commerce, adresse_commerce]
+        );
+      }
+
+      // Ajouter les infos du commerce dans la réponse
+      user.nom_commerce = nom_commerce;
+      user.adresse_commerce = adresse_commerce;
+    }
+
     res.json({
       success: true,
       message: 'Profil mis à jour avec succès',
-      user: result.rows[0],
+      user,
     });
   } catch (error) {
     console.error('Erreur mise à jour profil:', error);

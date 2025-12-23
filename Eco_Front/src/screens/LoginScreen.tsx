@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as API from '../services/api';
 import { styles } from './LoginScreen.styles';
 import { getRandomEcoTip } from '../utils/ecoTips';
@@ -50,13 +49,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const data = await API.login(email, password);
 
       if (data.success) {
-        // Sauvegarder le token et l'utilisateur
-        await AsyncStorage.setItem('token', data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(data.user));
-        
         Alert.alert('✅ Connexion réussie', 'Bienvenue !');
-        
-        // Rediriger vers ValidationScreen
+
+        // Le token et l'utilisateur seront sauvegardés de manière sécurisée par handleAuthSuccess dans App.tsx
         onLoginSuccess(data.token, data.user);
       } else {
         Alert.alert('Erreur', data.message || 'Identifiants incorrects');

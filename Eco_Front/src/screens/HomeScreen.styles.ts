@@ -91,4 +91,28 @@ export const styles = StyleSheet.create({
     color: colors.gray[500],
     textAlign: 'center',
   },
+  productList: {
+    padding: spacing.lg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: typography.fontSize.base,
+    color: colors.gray[600],
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.massive,
+  },
+  emptyText: {
+    fontSize: typography.fontSize.lg,
+    color: colors.gray[500],
+    textAlign: 'center',
+  },
 });

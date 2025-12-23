@@ -8,13 +8,16 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 import { styles } from './ProfileScreen.styles';
 
 interface ProfileScreenProps {
   onNavigatePersonalInfo: () => void;
   onNavigatePaymentMethods: () => void;
+  onNavigateSellerProducts: () => void;
+  onNavigateSellerOrders: () => void;
+  onNavigateAddProduct: () => void;
   onNavigateBack: () => void;
   onLogout: () => void;
 }
@@ -22,6 +25,9 @@ interface ProfileScreenProps {
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigatePersonalInfo,
   onNavigatePaymentMethods,
+  onNavigateSellerProducts,
+  onNavigateSellerOrders,
+  onNavigateAddProduct,
   onNavigateBack,
   onLogout,
 }) => {
@@ -35,17 +41,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const loadUserData = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      const savedImage = await AsyncStorage.getItem('profileImage');
+      console.log('[ProfileScreen] Loading user data...');
+      const userData = await SecureStore.getItemAsync('user_data');
+      const savedImage = await SecureStore.getItemAsync('profileImage');
 
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        console.log('[ProfileScreen] User loaded:', parsedUser.user_type, parsedUser.email);
+        setUser(parsedUser);
       }
       if (savedImage) {
         setProfileImage(savedImage);
       }
     } catch (error) {
-      console.error('Erreur chargement utilisateur:', error);
+      console.error('[ProfileScreen] Error loading user:', error);
     } finally {
       setLoading(false);
     }
@@ -76,9 +85,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         const imageUri = result.assets[0].uri;
         setProfileImage(imageUri);
 
-        // Sauvegarder temporairement dans AsyncStorage
+        // Sauvegarder temporairement dans SecureStore
         // TODO: Uploader vers le serveur
-        await AsyncStorage.setItem('profileImage', imageUri);
+        await SecureStore.setItemAsync('profileImage', imageUri);
 
         Alert.alert('Succès', 'Photo de profil mise à jour !');
       }
@@ -158,18 +167,73 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={styles.menuIconText}>📦</Text>
+          {/* Menu vendeur uniquement */}
+          {user?.user_type === 'vendeur' && (
+            <>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  console.log('[ProfileScreen] Add product button pressed');
+                  console.log('[ProfileScreen] onNavigateAddProduct function:', typeof onNavigateAddProduct);
+                  if (onNavigateAddProduct) {
+                    onNavigateAddProduct();
+                  } else {
+                    console.error('[ProfileScreen] onNavigateAddProduct is not defined');
+                  }
+                }}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#D1FAE5' }]}>
+                    <Text style={styles.menuIconText}>➕</Text>
+                  </View>
+                  <Text style={styles.menuItemText}>Ajouter un produit</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={onNavigateSellerProducts}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+                    <Text style={styles.menuIconText}>📦</Text>
+                  </View>
+                  <Text style={styles.menuItemText}>Mes produits</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={onNavigateSellerOrders}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#E0E7FF' }]}>
+                    <Text style={styles.menuIconText}>📋</Text>
+                  </View>
+                  <Text style={styles.menuItemText}>Mes commandes</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Menu client uniquement */}
+          {user?.user_type !== 'vendeur' && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={styles.menuIconText}>📦</Text>
+                </View>
+                <Text style={styles.menuItemText}>Mes commandes</Text>
               </View>
-              <Text style={styles.menuItemText}>Mes commandes</Text>
-            </View>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.menuItem}

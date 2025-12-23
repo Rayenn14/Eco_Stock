@@ -1,0 +1,181 @@
+-- Jeu de données d'ingrédients normalisés pour EcoStock
+-- Tous les ingrédients sont en minuscules, sans accents, trimés
+-- Format: nom normalisé (tomate, pomme, etc.)
+
+INSERT INTO ingredients (name) VALUES
+-- Fruits
+('pomme'),
+('poire'),
+('banane'),
+('orange'),
+('citron'),
+('fraise'),
+('framboise'),
+('myrtille'),
+('cerise'),
+('peche'),
+('abricot'),
+('prune'),
+('raisin'),
+('pasteque'),
+('melon'),
+('kiwi'),
+('ananas'),
+('mangue'),
+('avocat'),
+('noix de coco'),
+
+-- Légumes
+('tomate'),
+('carotte'),
+('pomme de terre'),
+('oignon'),
+('ail'),
+('poivron'),
+('courgette'),
+('aubergine'),
+('concombre'),
+('salade'),
+('laitue'),
+('chou'),
+('chou-fleur'),
+('brocoli'),
+('epinard'),
+('haricot vert'),
+('petit pois'),
+('radis'),
+('navet'),
+('poireau'),
+('celeri'),
+('fenouil'),
+('betterave'),
+('courge'),
+('potiron'),
+('mais'),
+
+-- Produits laitiers
+('lait'),
+('yaourt'),
+('fromage'),
+('beurre'),
+('creme'),
+('creme fraiche'),
+('fromage blanc'),
+('mozzarella'),
+('parmesan'),
+('comte'),
+('camembert'),
+('roquefort'),
+('chevre'),
+
+-- Viandes et poissons
+('poulet'),
+('boeuf'),
+('porc'),
+('agneau'),
+('veau'),
+('dinde'),
+('canard'),
+('saumon'),
+('thon'),
+('cabillaud'),
+('truite'),
+('crevette'),
+('moule'),
+('huitre'),
+
+-- Céréales et féculents
+('riz'),
+('pates'),
+('pain'),
+('farine'),
+('quinoa'),
+('boulgour'),
+('couscous'),
+('semoule'),
+('avoine'),
+('ble'),
+('orge'),
+('sarrasin'),
+
+-- Légumineuses
+('lentille'),
+('pois chiche'),
+('haricot blanc'),
+('haricot rouge'),
+('feve'),
+('soja'),
+
+-- Oeufs et dérivés
+('oeuf'),
+
+-- Huiles et matières grasses
+('huile olive'),
+('huile tournesol'),
+('huile colza'),
+('margarine'),
+
+-- Sucres et produits sucrés
+('sucre'),
+('miel'),
+('confiture'),
+('chocolat'),
+('cacao'),
+('sirop erable'),
+
+-- Herbes et épices
+('basilic'),
+('persil'),
+('coriandre'),
+('menthe'),
+('thym'),
+('romarin'),
+('origan'),
+('laurier'),
+('cannelle'),
+('poivre'),
+('sel'),
+('curry'),
+('paprika'),
+('cumin'),
+('muscade'),
+('gingembre'),
+('curcuma'),
+
+-- Noix et graines
+('amande'),
+('noix'),
+('noisette'),
+('pistache'),
+('cacahuete'),
+('noix de cajou'),
+('graine de courge'),
+('graine de tournesol'),
+('graine de lin'),
+('graine de chia'),
+
+-- Boissons
+('eau'),
+('the'),
+('cafe'),
+('jus orange'),
+('jus pomme'),
+('jus raisin'),
+
+-- Condiments
+('vinaigre'),
+('moutarde'),
+('ketchup'),
+('mayonnaise'),
+('sauce soja'),
+
+-- Produits transformés communs
+('soupe'),
+('bouillon'),
+('conserve'),
+('sauce tomate'),
+('pate pizza'),
+('pate feuilletee'),
+('pate brisee')
+
+ON CONFLICT (name) DO NOTHING;

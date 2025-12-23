@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import * as API from '../services/api';
 import { styles } from './PersonalInfoScreen.styles';
 import { AddressAutocomplete } from '../components/AddressAutocomplete';
@@ -45,7 +45,7 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
 
   const loadUserData = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
+      const userData = await SecureStore.getItemAsync('user_data');
       if (userData) {
         const user = JSON.parse(userData);
         setPrenom(user.prenom || '');
@@ -125,32 +125,37 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
     setLoading(true);
 
     try {
-      const updatedUser = {
+      const profileData = {
         prenom: prenom.trim(),
         nom: nom.trim(),
         email: email.trim(),
-        phone: phone.trim(),
-        user_type: userType,
-        nom_commerce: userType === 'vendeur' ? nomCommerce.trim() : '',
-        adresse_commerce: userType === 'vendeur' ? adresseCommerce.trim() : '',
-        nom_association: userType === 'association' ? nomAssociation.trim() : '',
-        adresse_ligne1: adresseLigne1.trim(),
-        adresse_ligne2: adresseLigne2.trim(),
-        code_postal: codePostal.trim(),
-        ville: ville.trim(),
-        pays: pays.trim(),
+        phone: phone.trim() || undefined,
+        nom_commerce: userType === 'vendeur' ? nomCommerce.trim() : undefined,
+        adresse_commerce: userType === 'vendeur' ? adresseCommerce.trim() : undefined,
+        nom_association: userType === 'association' ? nomAssociation.trim() : undefined,
+        adresse: adresseLigne1.trim() || undefined,
+        ville: ville.trim() || undefined,
+        code_postal: codePostal.trim() || undefined,
       };
 
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      // Appeler l'API pour mettre à jour le profil
+      const response = await API.updateProfile(profileData);
 
-      Alert.alert(
-        'Succès',
-        'Vos informations ont été mises à jour',
-        [{ text: 'OK', onPress: onNavigateBack }]
-      );
-    } catch (error) {
+      if (response.success) {
+        // Mettre à jour SecureStore avec les nouvelles données
+        await API.saveUser(response.user);
+
+        Alert.alert(
+          'Succès',
+          'Vos informations ont été mises à jour',
+          [{ text: 'OK', onPress: onNavigateBack }]
+        );
+      } else {
+        Alert.alert('Erreur', response.message || 'Impossible de mettre à jour vos informations');
+      }
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour vos informations');
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour vos informations');
     } finally {
       setLoading(false);
     }

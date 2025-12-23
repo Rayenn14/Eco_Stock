@@ -17,9 +17,13 @@ app.use((req, res, next) => {
 // ROUTES
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
+const productsRoutes = require('./routes/products');
+const sellerRoutes = require('./routes/seller');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/seller', sellerRoutes);
 
 // Route d'accueil
 app.get('/', (req, res) => {
@@ -37,6 +41,19 @@ app.get('/', (req, res) => {
         get: 'GET /api/profile',
         update: 'PUT /api/profile',
         uploadImage: 'POST /api/profile/upload-image'
+      },
+      products: {
+        getAll: 'GET /api/products',
+        getById: 'GET /api/products/:id'
+      },
+      seller: {
+        myProducts: 'GET /api/seller/my-products',
+        addProduct: 'POST /api/seller/products',
+        updateProduct: 'PUT /api/seller/products/:id',
+        deleteProduct: 'DELETE /api/seller/products/:id',
+        categories: 'GET /api/seller/categories',
+        orders: 'GET /api/seller/orders',
+        updateOrderStatus: 'PUT /api/seller/orders/:id/status'
       }
     }
   });

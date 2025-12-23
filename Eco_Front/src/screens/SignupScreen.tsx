@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as API from '../services/api';
 import { styles } from './SignupScreen.styles';
 import { AppleIcon, GoogleIcon, FacebookIcon } from '../components/SocialIcons';
@@ -78,11 +77,9 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
       });
 
       if (data.success) {
-        await AsyncStorage.setItem('token', data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(data.user));
-
         Alert.alert('Inscription réussie', `Bienvenue ${prenom} !`);
 
+        // Le token et l'utilisateur seront sauvegardés de manière sécurisée par handleAuthSuccess dans App.tsx
         onSignupSuccess(data.token, data.user);
       } else {
         Alert.alert('Erreur', data.message || 'Inscription échouée');

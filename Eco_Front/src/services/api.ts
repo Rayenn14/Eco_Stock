@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
 const API_URL = 'http://192.168.137.1:3000/api';
@@ -9,8 +9,35 @@ export const setTokenExpiredHandler = (handler: () => void) => {
   onTokenExpired = handler;
 };
 
+// Fonction pour stocker le token de manière sécurisée
+export const saveToken = async (token: string) => {
+  await SecureStore.setItemAsync('auth_token', token);
+};
+
+// Fonction pour récupérer le token de manière sécurisée
+export const getToken = async () => {
+  return await SecureStore.getItemAsync('auth_token');
+};
+
+// Fonction pour stocker les données utilisateur de manière sécurisée
+export const saveUser = async (user: any) => {
+  await SecureStore.setItemAsync('user_data', JSON.stringify(user));
+};
+
+// Fonction pour récupérer les données utilisateur
+export const getUser = async () => {
+  const userData = await SecureStore.getItemAsync('user_data');
+  return userData ? JSON.parse(userData) : null;
+};
+
+// Fonction pour supprimer toutes les données sécurisées
+export const clearSecureData = async () => {
+  await SecureStore.deleteItemAsync('auth_token');
+  await SecureStore.deleteItemAsync('user_data');
+};
+
 const getHeaders = async () => {
-  const token = await AsyncStorage.getItem('token');
+  const token = await getToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -23,8 +50,7 @@ const handleApiResponse = async (response: Response) => {
   if (response.status === 403 && (data.message === 'Token expiré' || data.message === 'Token invalide')) {
     console.warn('Token expired');
 
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
+    await clearSecureData();
 
     Alert.alert(
       'Session expirée',
@@ -44,13 +70,17 @@ const handleApiResponse = async (response: Response) => {
 
 export const login = async (email: string, password: string) => {
   try {
+    console.log('[API] POST /auth/login - Email:', email);
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: await getHeaders(),
       body: JSON.stringify({ email, password }),
     });
-    return await handleApiResponse(response);
+    const data = await handleApiResponse(response);
+    console.log('[API] Login response:', data.success ? 'Success' : 'Failed');
+    return data;
   } catch (error) {
+    console.error('[API] Login error:', error);
     if (error instanceof Error && error.message === 'Session expirée') {
       throw error;
     }
@@ -151,5 +181,204 @@ export const uploadProfileImage = async (imageBase64: string) => {
       throw error;
     }
     throw new Error('Impossible d\'uploader l\'image');
+  }
+};
+
+export const getProducts = async (latitude?: number, longitude?: number) => {
+  try {
+    let url = `${API_URL}/products`;
+    if (latitude !== undefined && longitude !== undefined) {
+      url += `?latitude=${latitude}&longitude=${longitude}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer les produits');
+  }
+};
+
+export const getProductById = async (productId: string, latitude?: number, longitude?: number) => {
+  try {
+    let url = `${API_URL}/products/${productId}`;
+    if (latitude !== undefined && longitude !== undefined) {
+      url += `?latitude=${latitude}&longitude=${longitude}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer le produit');
+  }
+};
+
+// ===== SELLER API =====
+
+export const getSellerProducts = async () => {
+  try {
+    const response = await fetch(`${API_URL}/seller/my-products`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer vos produits');
+  }
+};
+
+export const addProduct = async (productData: {
+  nom: string;
+  description?: string;
+  prix: number;
+  prix_original?: number;
+  stock: number;
+  image_url?: string;
+  dlc: string;
+  category_id?: number;
+  is_bio?: boolean;
+  is_local?: boolean;
+  reserved_for_associations?: boolean;
+  ingredient_id?: number;
+}) => {
+  try {
+    console.log('[API] POST /seller/products - Product data:', JSON.stringify(productData, null, 2));
+    const response = await fetch(`${API_URL}/seller/products`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify(productData),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] Product added:', data.success ? 'Success' : 'Failed');
+    return data;
+  } catch (error) {
+    console.error('[API] Add product error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible d\'ajouter le produit');
+  }
+};
+
+export const updateProduct = async (productId: string, productData: {
+  nom?: string;
+  description?: string;
+  prix?: number;
+  prix_original?: number;
+  stock?: number;
+  image_url?: string;
+  dlc?: string;
+  category_id?: number;
+  is_bio?: boolean;
+  is_local?: boolean;
+  is_disponible?: boolean;
+  reserved_for_associations?: boolean;
+}) => {
+  try {
+    const response = await fetch(`${API_URL}/seller/products/${productId}`, {
+      method: 'PUT',
+      headers: await getHeaders(),
+      body: JSON.stringify(productData),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de mettre à jour le produit');
+  }
+};
+
+export const deleteProduct = async (productId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/seller/products/${productId}`, {
+      method: 'DELETE',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de supprimer le produit');
+  }
+};
+
+export const getCategories = async () => {
+  try {
+    const response = await fetch(`${API_URL}/seller/categories`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer les catégories');
+  }
+};
+
+export const searchIngredients = async (query: string) => {
+  try {
+    console.log('[API] GET /seller/ingredients/search - Query:', query);
+    const response = await fetch(`${API_URL}/seller/ingredients/search?query=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] Found', data.ingredients?.length || 0, 'ingredients');
+    return data;
+  } catch (error) {
+    console.error('[API] Search ingredients error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de rechercher les ingrédients');
+  }
+};
+
+export const getSellerOrders = async () => {
+  try {
+    const response = await fetch(`${API_URL}/seller/orders`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer les commandes');
+  }
+};
+
+export const updateOrderStatus = async (orderId: string, statut: string, message_vendeur?: string) => {
+  try {
+    const response = await fetch(`${API_URL}/seller/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: await getHeaders(),
+      body: JSON.stringify({ statut, message_vendeur }),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de mettre à jour le statut de la commande');
   }
 };
