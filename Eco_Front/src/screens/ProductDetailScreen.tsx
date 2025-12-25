@@ -13,6 +13,7 @@ import {
 import * as Location from 'expo-location';
 import { styles } from './ProductDetailScreen.styles';
 import * as API from '../services/api';
+import { useCart } from '../contexts/CartContext';
 
 interface Product {
   id: string;
@@ -48,6 +49,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   onNavigateBack,
 }) => {
   const [product, setProduct] = useState<Product | null>(null);
+  const { addToCart, isInCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
@@ -299,8 +301,35 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             </View>
           )}
 
-          <TouchableOpacity style={styles.addToCartButton}>
-            <Text style={styles.addToCartText}>Ajouter au panier</Text>
+          <TouchableOpacity
+            style={[
+              styles.addToCartButton,
+              isInCart(product.id) && styles.addToCartButtonDisabled
+            ]}
+            onPress={() => {
+              if (isInCart(product.id)) {
+                Alert.alert('Déjà dans le panier', 'Ce produit est déjà dans votre panier');
+              } else {
+                addToCart({
+                  id: product.id,
+                  nom: product.nom,
+                  description: product.description,
+                  prix: product.prix,
+                  prix_original: product.prix_original,
+                  image_url: product.image_url,
+                  dlc: product.dlc,
+                  nom_commerce: product.nom_commerce,
+                  category_name: product.category_name,
+                  stock: product.stock,
+                });
+                Alert.alert('Ajouté au panier', `${product.nom} a été ajouté à votre panier`);
+              }
+            }}
+            disabled={isInCart(product.id)}
+          >
+            <Text style={styles.addToCartText}>
+              {isInCart(product.id) ? '✓ Déjà dans le panier' : '🛒 Ajouter au panier'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -242,6 +242,9 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
   },
+  addToCartButtonDisabled: {
+    backgroundColor: colors.gray[400],
+  },
   addToCartText: {
     color: colors.white,
     fontSize: typography.fontSize.lg,

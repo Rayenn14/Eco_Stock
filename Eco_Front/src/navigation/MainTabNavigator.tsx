@@ -5,6 +5,7 @@ import { MainTabParamList } from './types';
 import { HomeNavigator } from './HomeNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
 import { SearchNavigator } from './SearchNavigator';
+import { CartScreen } from '../screens/CartScreen';
 import { BottomNavBar } from '../components/BottomNavBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -72,7 +73,7 @@ export const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Cart"
-        component={ComingSoonScreen}
+        component={CartScreen}
         options={{ title: 'Panier' }}
       />
       <Tab.Screen
