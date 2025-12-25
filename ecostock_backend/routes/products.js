@@ -17,7 +17,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     const searchQuery = query.trim();
 
-    // Recherche par nom de produit OU ingrédients
+    // Recherche par nom de produit OU ingrédients avec scoring basé sur la position
     const result = await db.query(
       `SELECT
         p.id,
@@ -40,10 +40,15 @@ router.get('/search', authenticateToken, async (req, res) => {
         u.nom as vendeur_nom,
         STRING_AGG(DISTINCT i.name, ', ') as ingredient_nom,
         ARRAY_AGG(DISTINCT i.id) FILTER (WHERE i.id IS NOT NULL) as ingredient_ids,
-        GREATEST(
-          SIMILARITY(p.nom, $1),
-          MAX(SIMILARITY(i.name, $1))
-        ) as score
+        CASE
+          WHEN LOWER(p.nom) = LOWER($1) THEN 100
+          WHEN LOWER(p.nom) LIKE LOWER($1) || '%' THEN 90
+          WHEN LOWER(p.nom) LIKE '%' || LOWER($1) || '%' THEN 70
+          WHEN MAX(CASE WHEN LOWER(i.name) = LOWER($1) THEN 1 ELSE 0 END) = 1 THEN 85
+          WHEN MAX(CASE WHEN LOWER(i.name) LIKE LOWER($1) || '%' THEN 1 ELSE 0 END) = 1 THEN 75
+          WHEN MAX(CASE WHEN LOWER(i.name) LIKE '%' || LOWER($1) || '%' THEN 1 ELSE 0 END) = 1 THEN 60
+          ELSE 50
+        END as score
       FROM products p
       INNER JOIN users u ON p.vendeur_id = u.id
       LEFT JOIN commerces c ON u.id = c.vendeur_id
@@ -53,10 +58,10 @@ router.get('/search', authenticateToken, async (req, res) => {
       WHERE p.is_disponible = true
         AND p.stock > 0
         AND (
-          p.nom ILIKE '%' || $1 || '%'
-          OR i.name ILIKE '%' || $1 || '%'
-          OR SIMILARITY(p.nom, $1) > 0.3
-          OR SIMILARITY(i.name, $1) > 0.3
+          LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(i.name) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(p.description) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(cat.nom) LIKE '%' || LOWER($1) || '%'
         )
       GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY score DESC, p.created_at DESC
