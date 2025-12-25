@@ -12,6 +12,8 @@ interface CartProduct {
   nom_commerce: string;
   category_name: string;
   stock: number;
+  ingredient_nom?: string;
+  ingredient_ids?: number[];
 }
 
 interface CartContextType {

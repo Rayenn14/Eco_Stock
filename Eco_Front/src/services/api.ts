@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
-const API_URL = 'http://192.168.137.1:3000/api';
+const API_URL = 'http://192.168.1.123:3000/api';
 
 let onTokenExpired: (() => void) | null = null;
 
@@ -432,5 +432,111 @@ export const updateOrderStatus = async (orderId: string, statut: string, message
       throw error;
     }
     throw new Error('Impossible de mettre à jour le statut de la commande');
+  }
+};
+
+// ==========================================
+// RECIPES API
+// ==========================================
+
+export const getRecipes = async (limit: number = 6, offset: number = 0) => {
+  try {
+    const response = await fetch(`${API_URL}/recipes?limit=${limit}&offset=${offset}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer les recettes');
+  }
+};
+
+export const searchRecipes = async (query: string, category?: string) => {
+  try {
+    let url = `${API_URL}/recipes/search?query=${encodeURIComponent(query)}`;
+    if (category) {
+      url += `&category=${encodeURIComponent(category)}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de rechercher les recettes');
+  }
+};
+
+export const getRecipesByIngredients = async (ingredients: string[]) => {
+  try {
+    const ingredientsParam = ingredients.join(',');
+    const response = await fetch(`${API_URL}/recipes/by-ingredients?ingredients=${encodeURIComponent(ingredientsParam)}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de trouver les recettes par ingrédients');
+  }
+};
+
+export const searchRecipeIngredients = async (query: string) => {
+  try {
+    const response = await fetch(`${API_URL}/recipes/ingredients/search?query=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de rechercher les ingrédients');
+  }
+};
+
+export const getRecipeById = async (id: string) => {
+  try {
+    const response = await fetch(`${API_URL}/recipes/${id}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer la recette');
+  }
+};
+
+export const getProductsByIngredient = async (ingredientName: string, latitude?: number, longitude?: number) => {
+  try {
+    let url = `${API_URL}/ingredients/products/${encodeURIComponent(ingredientName)}`;
+
+    if (latitude && longitude) {
+      url += `?latitude=${latitude}&longitude=${longitude}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de trouver les produits');
   }
 };

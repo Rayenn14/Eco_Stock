@@ -10,6 +10,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { styles } from './ProductDetailScreen.styles';
 import * as API from '../services/api';
@@ -40,21 +41,28 @@ interface Product {
 }
 
 interface ProductDetailScreenProps {
-  productId: string;
-  onNavigateBack: () => void;
+  productId?: string;
+  onNavigateBack?: () => void;
 }
 
-export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
-  productId,
-  onNavigateBack,
-}) => {
+export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) => {
+  const route = useRoute<any>();
+  const productId = props.productId || route.params?.productId;
+  const onNavigateBack = props.onNavigateBack;
+
+  // Si on vient de route.params ET qu'on n'a pas de onNavigateBack, on utilise le header de React Navigation
+  // onNavigateBack existe seulement quand on vient de HomeNavigator
+  const useNativeHeader = !!route.params?.productId && !onNavigateBack;
+
   const [product, setProduct] = useState<Product | null>(null);
   const { addToCart, isInCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
-    requestLocationAndLoadProduct();
+    if (productId) {
+      requestLocationAndLoadProduct();
+    }
   }, [productId]);
 
   const requestLocationAndLoadProduct = async () => {
@@ -127,13 +135,15 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Details du produit</Text>
-          <View style={styles.backButton} />
-        </View>
+        {!useNativeHeader && (
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
+              <Text style={styles.backIcon}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Details du produit</Text>
+            <View style={styles.backButton} />
+          </View>
+        )}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#166534" />
           <Text style={styles.loadingText}>Chargement...</Text>
@@ -145,13 +155,15 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   if (!product) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Details du produit</Text>
-          <View style={styles.backButton} />
-        </View>
+        {!useNativeHeader && (
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
+              <Text style={styles.backIcon}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Details du produit</Text>
+            <View style={styles.backButton} />
+          </View>
+        )}
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Produit introuvable</Text>
         </View>
@@ -175,13 +187,15 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Details du produit</Text>
-        <View style={styles.backButton} />
-      </View>
+      {!useNativeHeader && (
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onNavigateBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Details du produit</Text>
+          <View style={styles.backButton} />
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -321,6 +335,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   nom_commerce: product.nom_commerce,
                   category_name: product.category_name,
                   stock: product.stock,
+                  ingredient_nom: product.ingredient_nom,
+                  ingredient_ids: product.ingredient_ids,
                 });
                 Alert.alert('Ajouté au panier', `${product.nom} a été ajouté à votre panier`);
               }

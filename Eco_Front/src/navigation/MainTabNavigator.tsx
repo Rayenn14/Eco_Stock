@@ -6,9 +6,36 @@ import { HomeNavigator } from './HomeNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
 import { SearchNavigator } from './SearchNavigator';
 import { CartScreen } from '../screens/CartScreen';
+import { RecipesScreen } from '../screens/RecipesScreen';
+import { RecipeDetailScreen } from '../screens/RecipeDetailScreen';
+import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { BottomNavBar } from '../components/BottomNavBar';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const RecipesStack = createNativeStackNavigator();
+
+const RecipesNavigator = () => {
+  console.log('[RecipesNavigator] Rendering Recipes stack');
+  return (
+    <RecipesStack.Navigator screenOptions={{ headerShown: false }}>
+      <RecipesStack.Screen
+        name="RecipesList"
+        component={RecipesScreen}
+      />
+      <RecipesStack.Screen
+        name="RecipeDetail"
+        component={RecipeDetailScreen}
+        options={{ headerShown: true, title: 'Détail de la recette', headerBackTitle: 'Retour' }}
+      />
+      <RecipesStack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{ headerShown: true, title: 'Détail du produit', headerBackTitle: 'Retour' }}
+      />
+    </RecipesStack.Navigator>
+  );
+};
 
 // Composant placeholder pour les fonctionnalités à venir
 const ComingSoonScreen = () => {
@@ -78,7 +105,7 @@ export const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Recipes"
-        component={ComingSoonScreen}
+        component={RecipesNavigator}
         options={{ title: 'Recettes' }}
       />
       <Tab.Screen
