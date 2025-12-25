@@ -5,7 +5,10 @@ import { AuthContext } from './RootNavigator';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PersonalInfoScreen } from '../screens/PersonalInfoScreen';
 import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { AddProductScreen } from '../screens/AddProductScreen';
+import { SellerProductsScreen } from '../screens/SellerProductsScreen';
+import { SellerOrdersScreen } from '../screens/SellerOrdersScreen';
+import { Alert } from 'react-native';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
 
@@ -83,19 +86,53 @@ const PaymentMethodsScreenWrapper = ({ navigation }: StackScreenProps<ProfileSta
   );
 };
 
-// Écrans temporaires pour les fonctionnalités vendeur
-const ComingSoonScreen = ({ navigation, title }: { navigation: any; title: string }) => {
+// Wrapper pour AddProductScreen
+const AddProductScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'AddProduct'>) => {
+  console.log('[AddProductScreenWrapper] Rendering');
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>Écran en cours de développement</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.buttonText}>Retour au profil</Text>
-      </TouchableOpacity>
-    </View>
+    <AddProductScreen
+      onNavigateBack={() => {
+        console.log('[AddProductScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+      onProductAdded={() => {
+        console.log('[AddProductScreenWrapper] Product added, navigating to SellerProducts');
+        navigation.navigate('SellerProducts');
+      }}
+    />
+  );
+};
+
+// Wrapper pour SellerProductsScreen
+const SellerProductsScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'SellerProducts'>) => {
+  console.log('[SellerProductsScreenWrapper] Rendering');
+
+  return (
+    <SellerProductsScreen
+      onNavigateBack={() => {
+        console.log('[SellerProductsScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+      onNavigateAddProduct={() => {
+        console.log('[SellerProductsScreenWrapper] Navigate to AddProduct');
+        navigation.navigate('AddProduct');
+      }}
+    />
+  );
+};
+
+// Wrapper pour SellerOrdersScreen
+const SellerOrdersScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'SellerOrders'>) => {
+  console.log('[SellerOrdersScreenWrapper] Rendering');
+
+  return (
+    <SellerOrdersScreen
+      onNavigateBack={() => {
+        console.log('[SellerOrdersScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+    />
   );
 };
 
@@ -111,44 +148,9 @@ export const ProfileNavigator = () => {
       <Stack.Screen name="ProfileHome" component={ProfileScreenWrapper} />
       <Stack.Screen name="PersonalInfo" component={PersonalInfoScreenWrapper} />
       <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreenWrapper} />
-      <Stack.Screen name="AddProduct">
-        {(props) => <ComingSoonScreen {...props} title="Ajouter un produit" />}
-      </Stack.Screen>
-      <Stack.Screen name="SellerProducts">
-        {(props) => <ComingSoonScreen {...props} title="Mes produits" />}
-      </Stack.Screen>
-      <Stack.Screen name="SellerOrders">
-        {(props) => <ComingSoonScreen {...props} title="Mes commandes" />}
-      </Stack.Screen>
+      <Stack.Screen name="AddProduct" component={AddProductScreenWrapper} />
+      <Stack.Screen name="SellerProducts" component={SellerProductsScreenWrapper} />
+      <Stack.Screen name="SellerOrders" component={SellerOrdersScreenWrapper} />
     </Stack.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#F0FDF4',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 40,
-  },
-  button: {
-    backgroundColor: '#166534',
-    padding: 12,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-});

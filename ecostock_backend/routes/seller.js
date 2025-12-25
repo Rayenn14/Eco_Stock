@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { uploadImage, deleteImage } = require('../services/cloudinary');
 
 // Middleware pour vérifier que l'utilisateur est un vendeur
 const isVendeur = async (req, res, next) => {
@@ -31,11 +32,7 @@ router.get('/my-products', authenticateToken, isVendeur, async (req, res) => {
         p.stock,
         p.image_url,
         p.dlc,
-        p.date_peremption,
-        p.is_bio,
-        p.is_local,
         p.is_disponible,
-        p.is_lot,
         p.reserved_for_associations,
         p.created_at,
         p.updated_at,
@@ -81,10 +78,10 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       image_url,
       dlc,
       category_id,
-      is_bio,
-      is_local,
+      is_lot,
       reserved_for_associations,
-      ingredient_id
+      ingredient_id,
+      ingredient_ids
     } = req.body;
 
     // Validation
@@ -96,16 +93,24 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       });
     }
 
-    // Vérifier que la DLC n'est pas déjà passée
+    // Vérifier que la DLC n'est pas déjà passée ou aujourd'hui
     const dlcDate = new Date(dlc);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (dlcDate < today) {
+    if (dlcDate <= today) {
       return res.status(400).json({
         success: false,
-        message: 'La date limite de consommation ne peut pas être dans le passé'
+        message: 'La date limite de consommation doit être au moins demain'
       });
+    }
+
+    // Upload de l'image vers Cloudinary si fournie
+    let cloudinaryImageUrl = null;
+    if (image_url) {
+      console.log('[Seller] Uploading image to Cloudinary...');
+      cloudinaryImageUrl = await uploadImage(image_url, 'ecostock/products');
+      console.log('[Seller] Image uploaded:', cloudinaryImageUrl);
     }
 
     // Créer le produit
@@ -120,11 +125,10 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
         stock,
         image_url,
         dlc,
-        is_bio,
-        is_local,
+        is_lot,
         is_disponible,
         reserved_for_associations
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)
       RETURNING *`,
       [
         req.user.id,
@@ -134,10 +138,9 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
         prix,
         prix_original || null,
         stock,
-        image_url || null,
+        cloudinaryImageUrl || null,
         dlc,
-        is_bio || false,
-        is_local || false,
+        is_lot || false,
         reserved_for_associations || false
       ]
     );
@@ -145,8 +148,22 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
     const product = result.rows[0];
     console.log('[Seller] Product created with ID:', product.id);
 
-    // Si un ingrédient est fourni, créer la liaison dans product_items
-    if (ingredient_id) {
+    // Si c'est un lot avec plusieurs ingrédients
+    if (is_lot && ingredient_ids && ingredient_ids.length > 0) {
+      console.log('[Seller] Linking', ingredient_ids.length, 'ingredients to lot product', product.id);
+
+      for (const ingredientId of ingredient_ids) {
+        await db.query(
+          `INSERT INTO product_items (product_id, ingredient_id, nom, quantite, unite)
+           VALUES ($1, $2, $3, 1, 'unite')`,
+          [product.id, ingredientId, nom]
+        );
+      }
+
+      console.log('[Seller] All ingredients linked successfully to lot');
+    }
+    // Si c'est un produit normal avec un seul ingrédient
+    else if (!is_lot && ingredient_id) {
       console.log('[Seller] Linking ingredient', ingredient_id, 'to product', product.id);
       await db.query(
         `INSERT INTO product_items (product_id, ingredient_id, nom, quantite, unite)
@@ -186,15 +203,13 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
       image_url,
       dlc,
       category_id,
-      is_bio,
-      is_local,
       is_disponible,
       reserved_for_associations
     } = req.body;
 
-    // Vérifier que le produit appartient au vendeur
+    // Vérifier que le produit appartient au vendeur et récupérer l'ancienne image
     const checkResult = await db.query(
-      'SELECT id FROM products WHERE id = $1 AND vendeur_id = $2',
+      'SELECT id, image_url FROM products WHERE id = $1 AND vendeur_id = $2',
       [productId, req.user.id]
     );
 
@@ -203,6 +218,22 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
         success: false,
         message: 'Produit introuvable ou non autorisé'
       });
+    }
+
+    const oldImage = checkResult.rows[0].image_url;
+
+    // Upload de la nouvelle image vers Cloudinary si fournie
+    let cloudinaryImageUrl = image_url;
+    if (image_url && image_url.startsWith('data:image')) {
+      console.log('[Seller] Uploading new image to Cloudinary...');
+      cloudinaryImageUrl = await uploadImage(image_url, 'ecostock/products');
+      console.log('[Seller] New image uploaded:', cloudinaryImageUrl);
+
+      // Supprimer l'ancienne image de Cloudinary si elle existe
+      if (oldImage && oldImage.includes('cloudinary.com')) {
+        await deleteImage(oldImage);
+        console.log('[Seller] Old image deleted from Cloudinary');
+      }
     }
 
     const result = await db.query(
@@ -215,12 +246,10 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
         image_url = COALESCE($6, image_url),
         dlc = COALESCE($7, dlc),
         category_id = COALESCE($8, category_id),
-        is_bio = COALESCE($9, is_bio),
-        is_local = COALESCE($10, is_local),
-        is_disponible = COALESCE($11, is_disponible),
-        reserved_for_associations = COALESCE($12, reserved_for_associations),
+        is_disponible = COALESCE($9, is_disponible),
+        reserved_for_associations = COALESCE($10, reserved_for_associations),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $13 AND vendeur_id = $14
+      WHERE id = $11 AND vendeur_id = $12
       RETURNING *`,
       [
         nom,
@@ -228,11 +257,9 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
         prix,
         prix_original,
         stock,
-        image_url,
+        cloudinaryImageUrl,
         dlc,
         category_id,
-        is_bio,
-        is_local,
         is_disponible,
         reserved_for_associations,
         productId,
@@ -259,9 +286,9 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
   try {
     const productId = req.params.id;
 
-    // Vérifier que le produit appartient au vendeur
+    // Vérifier que le produit appartient au vendeur et récupérer l'image
     const checkResult = await db.query(
-      'SELECT id FROM products WHERE id = $1 AND vendeur_id = $2',
+      'SELECT id, image_url FROM products WHERE id = $1 AND vendeur_id = $2',
       [productId, req.user.id]
     );
 
@@ -272,10 +299,19 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
       });
     }
 
+    const productImage = checkResult.rows[0].image_url;
+
+    // Supprimer le produit de la base de données
     await db.query(
       'DELETE FROM products WHERE id = $1 AND vendeur_id = $2',
       [productId, req.user.id]
     );
+
+    // Supprimer l'image de Cloudinary si elle existe
+    if (productImage && productImage.includes('cloudinary.com')) {
+      await deleteImage(productImage);
+      console.log('[Seller] Product image deleted from Cloudinary');
+    }
 
     res.json({
       success: true,
@@ -371,19 +407,16 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
     const result = await db.query(
       `SELECT
         l.id,
-        l.numero_lot,
+        l.numero_commande,
         l.total,
-        l.statut,
-        l.mode_recuperation,
-        l.adresse_livraison,
-        l.date_recuperation,
-        l.message_client,
+        l.date_debut_recuperation,
+        l.date_fin_recuperation,
         l.created_at,
         u.prenom as client_prenom,
         u.nom as client_nom,
         u.email as client_email,
         u.telephone as client_telephone
-      FROM lots l
+      FROM commandes l
       INNER JOIN users u ON l.client_id = u.id
       WHERE l.vendeur_id = $1
       ORDER BY l.created_at DESC`,
@@ -399,58 +432,6 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des commandes'
-    });
-  }
-});
-
-// Mettre à jour le statut d'une commande
-router.put('/orders/:id/status', authenticateToken, isVendeur, async (req, res) => {
-  try {
-    const orderId = req.params.id;
-    const { statut, message_vendeur } = req.body;
-
-    const validStatuts = ['en_attente', 'confirmee', 'en_preparation', 'prete', 'livree', 'annulee'];
-
-    if (!validStatuts.includes(statut)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Statut invalide'
-      });
-    }
-
-    // Vérifier que la commande appartient au vendeur
-    const checkResult = await db.query(
-      'SELECT id FROM lots WHERE id = $1 AND vendeur_id = $2',
-      [orderId, req.user.id]
-    );
-
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Commande introuvable ou non autorisée'
-      });
-    }
-
-    const result = await db.query(
-      `UPDATE lots SET
-        statut = $1,
-        message_vendeur = COALESCE($2, message_vendeur),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3 AND vendeur_id = $4
-      RETURNING *`,
-      [statut, message_vendeur, orderId, req.user.id]
-    );
-
-    res.json({
-      success: true,
-      message: 'Statut mis à jour avec succès',
-      order: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Error updating order status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la mise à jour du statut'
     });
   }
 });

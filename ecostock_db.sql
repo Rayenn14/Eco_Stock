@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 38DZ3dqE88liqMWMayCbaFPe8cuWkcUKHtDIYQ2MuKJu0rd1noeZtn3pfrrbTI3
+\restrict PNcBZNcwSkN7PiPUu8kfXY2Q1qTWD8j6ziDpXxuK2nCDAbSU64mXN4JFzXAU0gJ
 
 -- Dumped from database version 18.0
 -- Dumped by pg_dump version 18.0
@@ -35,7 +35,7 @@ BEGIN
 
         -- Pour chaque produit du lot
         FOR item IN
-            SELECT product_id
+            SELECT product_id, COALESCE(quantite, 1) as quantite
             FROM lot_items
             WHERE lot_id = NEW.id
         LOOP
@@ -45,13 +45,14 @@ BEGIN
             WHERE id = item.product_id;
 
             -- Si stock insuffisant, bloquer
-            IF produit_stock < 1 THEN
-                RAISE EXCEPTION 'Stock insuffisant pour le produit %', item.product_id;
+            IF produit_stock < item.quantite THEN
+                RAISE EXCEPTION 'Stock insuffisant pour le produit % (demand‚: %, disponible: %)', 
+                    item.product_id, item.quantite, produit_stock;
             END IF;
 
-            -- D‚cr‚menter le stock
+            -- D‚cr‚menter le stock selon la quantit‚
             UPDATE products
-            SET stock = stock - 1
+            SET stock = stock - item.quantite
             WHERE id = item.product_id;
 
         END LOOP;
@@ -70,7 +71,7 @@ ALTER FUNCTION public.decrement_stock_on_lot_confirm() OWNER TO postgres;
 -- Name: FUNCTION decrement_stock_on_lot_confirm(); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON FUNCTION public.decrement_stock_on_lot_confirm() IS 'D‚cr‚mente le stock de chaque produit quand un lot est confirm‚';
+COMMENT ON FUNCTION public.decrement_stock_on_lot_confirm() IS 'D‚cr‚mente le stock de chaque produit (selon quantit‚) quand un lot est confirm‚';
 
 
 --
@@ -102,14 +103,14 @@ BEGIN
     -- V‚rifier si le statut passe … 'annulee' depuis 'confirmee'
     IF NEW.statut = 'annulee' AND OLD.statut = 'confirmee' THEN
 
-        -- Pour chaque produit du lot, restaurer le stock
+        -- Pour chaque produit du lot, restaurer le stock selon la quantit‚
         FOR item IN
-            SELECT product_id
+            SELECT product_id, COALESCE(quantite, 1) as quantite
             FROM lot_items
             WHERE lot_id = NEW.id
         LOOP
             UPDATE products
-            SET stock = stock + 1
+            SET stock = stock + item.quantite
             WHERE id = item.product_id;
         END LOOP;
 
@@ -127,7 +128,7 @@ ALTER FUNCTION public.restore_stock_on_lot_cancel() OWNER TO postgres;
 -- Name: FUNCTION restore_stock_on_lot_cancel(); Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON FUNCTION public.restore_stock_on_lot_cancel() IS 'Restaure le stock si un lot confirm‚ est annul‚';
+COMMENT ON FUNCTION public.restore_stock_on_lot_cancel() IS 'Restaure le stock (selon quantit‚) si un lot confirm‚ est annul‚';
 
 
 --
@@ -312,11 +313,20 @@ CREATE TABLE public.lot_items (
     lot_id uuid NOT NULL,
     product_id uuid NOT NULL,
     prix_unitaire numeric(10,2) NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    quantite integer DEFAULT 1 NOT NULL,
+    CONSTRAINT lot_items_quantite_check CHECK ((quantite > 0))
 );
 
 
 ALTER TABLE public.lot_items OWNER TO postgres;
+
+--
+-- Name: COLUMN lot_items.quantite; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.lot_items.quantite IS 'Quantit‚ de ce produit dans le lot (permet d''acheter plusieurs fois le mˆme produit)';
+
 
 --
 -- Name: lot_items_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -364,6 +374,27 @@ CREATE TABLE public.lots (
 
 
 ALTER TABLE public.lots OWNER TO postgres;
+
+--
+-- Name: COLUMN lots.mode_recuperation; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.lots.mode_recuperation IS 'Mode de r‚cup‚ration: sur_place ou livraison';
+
+
+--
+-- Name: COLUMN lots.adresse_livraison; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.lots.adresse_livraison IS 'Adresse de livraison si mode_recuperation = livraison';
+
+
+--
+-- Name: COLUMN lots.message_vendeur; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.lots.message_vendeur IS 'Message du vendeur au client concernant la commande';
+
 
 --
 -- Name: lots_sequence; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -478,18 +509,29 @@ CREATE TABLE public.products (
     stock integer DEFAULT 0,
     image_url text,
     dlc date,
-    date_peremption date,
-    is_bio boolean DEFAULT false,
-    is_local boolean DEFAULT false,
     is_disponible boolean DEFAULT true,
-    is_lot boolean DEFAULT false,
     reserved_for_associations boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_lot boolean DEFAULT false
 );
 
 
 ALTER TABLE public.products OWNER TO postgres;
+
+--
+-- Name: TABLE products; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.products IS 'Table des produits - Un produit peut ˆtre dans plusieurs lots (voir lot_items)';
+
+
+--
+-- Name: COLUMN products.is_lot; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.products.is_lot IS 'Indique si le produit est un panier surprise/lot (true) ou un produit normal (false)';
+
 
 --
 -- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: postgres
@@ -577,8 +619,6 @@ CREATE TABLE public.users (
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    profile_image text,
-    phone character varying(20),
     CONSTRAINT users_user_type_check CHECK (((user_type)::text = ANY ((ARRAY['vendeur'::character varying, 'client'::character varying, 'association'::character varying])::text[])))
 );
 
@@ -649,13 +689,6 @@ COPY public.categories (id, nom, description, created_at) FROM stdin;
 8	Bio	Produits biologiques	2025-12-22 23:00:38.674473
 9	SurgelÃ©s	Produits surgelÃ©s	2025-12-22 23:00:38.674473
 10	Autres	Autres produits	2025-12-22 23:00:38.674473
-11	Fruits & Legumes	Fruits et legumes frais	2025-12-23 14:56:17.451086
-15	Epicerie	Produits d'epicerie secs	2025-12-23 14:56:17.451086
-21	Conserves	Produits en conserve	2025-12-23 14:56:17.451086
-22	Condiments	Sauces, huiles, vinaigres	2025-12-23 14:56:17.451086
-23	Plats prepares	Plats cuisines et plats prepares	2025-12-23 14:56:17.451086
-24	Petit dejeuner	Cereales, confitures, miel	2025-12-23 14:56:17.451086
-25	Confiserie	Bonbons, chocolats, desserts	2025-12-23 14:56:17.451086
 \.
 
 
@@ -671,6 +704,9 @@ ec28970b-0e6c-44fb-8b86-7a56b87f1edc	c30ca161-9e65-43f3-82af-291b064e4951	À	À	
 80ae4bd1-4be9-4d06-b8ee-f2f86c5c7c35	11111111-1111-1111-1111-111111111111	La Boutique Fraiche	15 Rue de la Paix, 75001 Paris, France	2025-12-23 14:55:33.375225	2025-12-23 14:55:33.375225	48.86980000	2.33080000
 a0b15d85-0726-4dba-a6ea-3672273e46ad	22222222-2222-2222-2222-222222222222	Epicerie du Coin	45 Avenue des Champs-Elysees, 75008 Paris, France	2025-12-23 14:55:33.375225	2025-12-23 14:55:33.375225	48.87040000	2.30730000
 08215606-682d-41c3-aa47-164da70e24f5	33333333-3333-3333-3333-333333333333	Bio Market	28 Boulevard Saint-Germain, 75005 Paris, France	2025-12-23 14:55:33.375225	2025-12-23 14:55:33.375225	48.85100000	2.35040000
+8ab2d480-2cdb-422f-ac66-620b8a2e2878	1e5a51ee-0db3-4d60-b5d7-7e2846489b5d	Na	Hana, 17, Rue du Quatre Septembre, Quartier Gaillon, 2nd Arrondissement, Paris, Ile-de-France, Metropolitan France, 75002, France	2025-12-23 19:53:49.704479	2025-12-23 19:54:12.175223	48.86942340	2.33660510
+ef7acb81-78d2-414c-bbb5-3886133391e8	feab953f-26ef-43cc-8e94-39388427a623	Na	17, Rue du 4 Septembre, Cité Billion, Faubourg Saint-Jean, Saint-Quentin, Aisne, Hauts-de-France, Metropolitan France, 02100, France	2025-12-23 19:58:03.617954	2025-12-23 19:58:03.617954	\N	\N
+70e33730-4464-4f94-b2b3-f13464464e4e	e3488d05-9668-49dc-ac1b-8f57797c12e8	Bioz	Mori Venice Bar, 2, Rue du Quatre Septembre, Quartier Vivienne, 2nd Arrondissement, Paris, Ile-de-France, Metropolitan France, 75002, France	2025-12-23 20:52:28.633771	2025-12-23 20:52:28.633771	48.86907290	2.33999050
 \.
 
 
@@ -687,6 +723,153 @@ COPY public.favorites (id, user_id, product_id, created_at) FROM stdin;
 --
 
 COPY public.ingredients (id, name, created_at) FROM stdin;
+1	pomme	2025-12-23 20:47:53.165213
+2	poire	2025-12-23 20:47:53.165213
+3	banane	2025-12-23 20:47:53.165213
+4	orange	2025-12-23 20:47:53.165213
+5	citron	2025-12-23 20:47:53.165213
+6	fraise	2025-12-23 20:47:53.165213
+7	framboise	2025-12-23 20:47:53.165213
+8	myrtille	2025-12-23 20:47:53.165213
+9	cerise	2025-12-23 20:47:53.165213
+10	peche	2025-12-23 20:47:53.165213
+11	abricot	2025-12-23 20:47:53.165213
+12	prune	2025-12-23 20:47:53.165213
+13	raisin	2025-12-23 20:47:53.165213
+14	pasteque	2025-12-23 20:47:53.165213
+15	melon	2025-12-23 20:47:53.165213
+16	kiwi	2025-12-23 20:47:53.165213
+17	ananas	2025-12-23 20:47:53.165213
+18	mangue	2025-12-23 20:47:53.165213
+19	avocat	2025-12-23 20:47:53.165213
+20	noix de coco	2025-12-23 20:47:53.165213
+21	tomate	2025-12-23 20:47:53.165213
+22	carotte	2025-12-23 20:47:53.165213
+23	pomme de terre	2025-12-23 20:47:53.165213
+24	oignon	2025-12-23 20:47:53.165213
+25	ail	2025-12-23 20:47:53.165213
+26	poivron	2025-12-23 20:47:53.165213
+27	courgette	2025-12-23 20:47:53.165213
+28	aubergine	2025-12-23 20:47:53.165213
+29	concombre	2025-12-23 20:47:53.165213
+30	salade	2025-12-23 20:47:53.165213
+31	laitue	2025-12-23 20:47:53.165213
+32	chou	2025-12-23 20:47:53.165213
+33	chou-fleur	2025-12-23 20:47:53.165213
+34	brocoli	2025-12-23 20:47:53.165213
+35	epinard	2025-12-23 20:47:53.165213
+36	haricot vert	2025-12-23 20:47:53.165213
+37	petit pois	2025-12-23 20:47:53.165213
+38	radis	2025-12-23 20:47:53.165213
+39	navet	2025-12-23 20:47:53.165213
+40	poireau	2025-12-23 20:47:53.165213
+41	celeri	2025-12-23 20:47:53.165213
+42	fenouil	2025-12-23 20:47:53.165213
+43	betterave	2025-12-23 20:47:53.165213
+44	courge	2025-12-23 20:47:53.165213
+45	potiron	2025-12-23 20:47:53.165213
+46	mais	2025-12-23 20:47:53.165213
+47	lait	2025-12-23 20:47:53.165213
+48	yaourt	2025-12-23 20:47:53.165213
+49	fromage	2025-12-23 20:47:53.165213
+50	beurre	2025-12-23 20:47:53.165213
+51	creme	2025-12-23 20:47:53.165213
+52	creme fraiche	2025-12-23 20:47:53.165213
+53	fromage blanc	2025-12-23 20:47:53.165213
+54	mozzarella	2025-12-23 20:47:53.165213
+55	parmesan	2025-12-23 20:47:53.165213
+56	comte	2025-12-23 20:47:53.165213
+57	camembert	2025-12-23 20:47:53.165213
+58	roquefort	2025-12-23 20:47:53.165213
+59	chevre	2025-12-23 20:47:53.165213
+60	poulet	2025-12-23 20:47:53.165213
+61	boeuf	2025-12-23 20:47:53.165213
+62	porc	2025-12-23 20:47:53.165213
+63	agneau	2025-12-23 20:47:53.165213
+64	veau	2025-12-23 20:47:53.165213
+65	dinde	2025-12-23 20:47:53.165213
+66	canard	2025-12-23 20:47:53.165213
+67	saumon	2025-12-23 20:47:53.165213
+68	thon	2025-12-23 20:47:53.165213
+69	cabillaud	2025-12-23 20:47:53.165213
+70	truite	2025-12-23 20:47:53.165213
+71	crevette	2025-12-23 20:47:53.165213
+72	moule	2025-12-23 20:47:53.165213
+73	huitre	2025-12-23 20:47:53.165213
+74	riz	2025-12-23 20:47:53.165213
+75	pates	2025-12-23 20:47:53.165213
+76	pain	2025-12-23 20:47:53.165213
+77	farine	2025-12-23 20:47:53.165213
+78	quinoa	2025-12-23 20:47:53.165213
+79	boulgour	2025-12-23 20:47:53.165213
+80	couscous	2025-12-23 20:47:53.165213
+81	semoule	2025-12-23 20:47:53.165213
+82	avoine	2025-12-23 20:47:53.165213
+83	ble	2025-12-23 20:47:53.165213
+84	orge	2025-12-23 20:47:53.165213
+85	sarrasin	2025-12-23 20:47:53.165213
+86	lentille	2025-12-23 20:47:53.165213
+87	pois chiche	2025-12-23 20:47:53.165213
+88	haricot blanc	2025-12-23 20:47:53.165213
+89	haricot rouge	2025-12-23 20:47:53.165213
+90	feve	2025-12-23 20:47:53.165213
+91	soja	2025-12-23 20:47:53.165213
+92	oeuf	2025-12-23 20:47:53.165213
+93	huile olive	2025-12-23 20:47:53.165213
+94	huile tournesol	2025-12-23 20:47:53.165213
+95	huile colza	2025-12-23 20:47:53.165213
+96	margarine	2025-12-23 20:47:53.165213
+97	sucre	2025-12-23 20:47:53.165213
+98	miel	2025-12-23 20:47:53.165213
+99	confiture	2025-12-23 20:47:53.165213
+100	chocolat	2025-12-23 20:47:53.165213
+101	cacao	2025-12-23 20:47:53.165213
+102	sirop erable	2025-12-23 20:47:53.165213
+103	basilic	2025-12-23 20:47:53.165213
+104	persil	2025-12-23 20:47:53.165213
+105	coriandre	2025-12-23 20:47:53.165213
+106	menthe	2025-12-23 20:47:53.165213
+107	thym	2025-12-23 20:47:53.165213
+108	romarin	2025-12-23 20:47:53.165213
+109	origan	2025-12-23 20:47:53.165213
+110	laurier	2025-12-23 20:47:53.165213
+111	cannelle	2025-12-23 20:47:53.165213
+112	poivre	2025-12-23 20:47:53.165213
+113	sel	2025-12-23 20:47:53.165213
+114	curry	2025-12-23 20:47:53.165213
+115	paprika	2025-12-23 20:47:53.165213
+116	cumin	2025-12-23 20:47:53.165213
+117	muscade	2025-12-23 20:47:53.165213
+118	gingembre	2025-12-23 20:47:53.165213
+119	curcuma	2025-12-23 20:47:53.165213
+120	amande	2025-12-23 20:47:53.165213
+121	noix	2025-12-23 20:47:53.165213
+122	noisette	2025-12-23 20:47:53.165213
+123	pistache	2025-12-23 20:47:53.165213
+124	cacahuete	2025-12-23 20:47:53.165213
+125	noix de cajou	2025-12-23 20:47:53.165213
+126	graine de courge	2025-12-23 20:47:53.165213
+127	graine de tournesol	2025-12-23 20:47:53.165213
+128	graine de lin	2025-12-23 20:47:53.165213
+129	graine de chia	2025-12-23 20:47:53.165213
+130	eau	2025-12-23 20:47:53.165213
+131	the	2025-12-23 20:47:53.165213
+132	cafe	2025-12-23 20:47:53.165213
+133	jus orange	2025-12-23 20:47:53.165213
+134	jus pomme	2025-12-23 20:47:53.165213
+135	jus raisin	2025-12-23 20:47:53.165213
+136	vinaigre	2025-12-23 20:47:53.165213
+137	moutarde	2025-12-23 20:47:53.165213
+138	ketchup	2025-12-23 20:47:53.165213
+139	mayonnaise	2025-12-23 20:47:53.165213
+140	sauce soja	2025-12-23 20:47:53.165213
+141	soupe	2025-12-23 20:47:53.165213
+142	bouillon	2025-12-23 20:47:53.165213
+143	conserve	2025-12-23 20:47:53.165213
+144	sauce tomate	2025-12-23 20:47:53.165213
+145	pate pizza	2025-12-23 20:47:53.165213
+146	pate feuilletee	2025-12-23 20:47:53.165213
+147	pate brisee	2025-12-23 20:47:53.165213
 \.
 
 
@@ -694,7 +877,7 @@ COPY public.ingredients (id, name, created_at) FROM stdin;
 -- Data for Name: lot_items; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.lot_items (id, lot_id, product_id, prix_unitaire, created_at) FROM stdin;
+COPY public.lot_items (id, lot_id, product_id, prix_unitaire, created_at, quantite) FROM stdin;
 \.
 
 
@@ -719,6 +902,9 @@ COPY public.panier (id, user_id, product_id, created_at, quantite) FROM stdin;
 --
 
 COPY public.product_items (id, product_id, ingredient_id, nom, quantite, unite, created_at) FROM stdin;
+4	1cd41925-4167-4772-850e-006b42f57868	21	T	1	unite	2025-12-25 03:22:30.636599
+5	d022293b-3297-4b80-ac44-1aa50ffdfbc9	76	Lot	1	unite	2025-12-25 12:46:03.828938
+6	d022293b-3297-4b80-ac44-1aa50ffdfbc9	60	Lot	1	unite	2025-12-25 12:46:03.831049
 \.
 
 
@@ -726,19 +912,10 @@ COPY public.product_items (id, product_id, ingredient_id, nom, quantite, unite, 
 -- Data for Name: products; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.products (id, vendeur_id, category_id, nom, description, prix, prix_original, stock, image_url, dlc, date_peremption, is_bio, is_local, is_disponible, is_lot, reserved_for_associations, created_at, updated_at) FROM stdin;
-04956c87-8aba-4a2a-b454-b241108de5f9	11111111-1111-1111-1111-111111111111	1	Tomates Bio	Tomates fraiches du jour, cultivees localement sans pesticides	2.50	4.00	15	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==	2025-12-26	\N	t	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-532180be-8e99-49bb-94c0-ec281f51a7f5	11111111-1111-1111-1111-111111111111	1	Pommes Golden	Pommes Golden delicieuses et croquantes du verger local	1.80	3.50	20	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==	2025-12-30	\N	f	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-2d896a80-03f1-42f1-a2a2-dfe56ad83ec6	11111111-1111-1111-1111-111111111111	2	Pain de campagne	Pain de campagne artisanal cuit ce matin au four a bois	1.20	2.50	8	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==	2025-12-25	\N	f	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-fd5b7020-7c54-45a5-972b-b634dd44fc35	22222222-2222-2222-2222-222222222222	3	Yaourts nature	Lot de 4 yaourts nature au lait entier	1.50	2.80	12	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==	2025-12-28	\N	f	f	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-12b9e5a5-b0b9-41ac-a03e-91e6781587a5	22222222-2222-2222-2222-222222222222	5	Pates completes	Paquet de pates completes bio 500g riches en fibres	0.90	1.80	25	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI/an+P3wAAAABJRU5ErkJggg==	2026-01-22	\N	f	f	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-5c4e1082-3796-4ce9-ada5-7d0be150a397	22222222-2222-2222-2222-222222222222	6	Jus d'orange	Jus d'orange frais presse ce matin sans sucre ajoute	2.20	3.50	10	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==	2025-12-27	\N	f	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-2d5f198f-4ae7-4a71-abba-b4d32f2c796d	33333333-3333-3333-3333-333333333333	8	Carottes Bio	Carottes biologiques du producteur local certifie AB	1.60	2.90	18	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==	2025-12-29	\N	t	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-fc8a29ae-4976-427b-a6ed-5e8c2578113e	33333333-3333-3333-3333-333333333333	8	Lait Bio	Lait bio demi-ecreme 1L de vaches nourries a l'herbe	1.40	2.30	14	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==	2025-12-31	\N	t	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-3156bb58-a7ad-490a-b6d4-cd544c732b3f	33333333-3333-3333-3333-333333333333	1	Salade verte	Salade fraiche du jour cueillie ce matin	1.00	2.00	10	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==	2025-12-25	\N	t	t	t	f	f	2025-12-23 14:55:33.376652	2025-12-23 14:55:33.376652
-505ee2f1-2713-4bf2-9dc6-c894f3ecbd37	11111111-1111-1111-1111-111111111111	2	Lot Boulangerie	Assortiment de pain et viennoiseries de la veille encore delicieux	5.00	12.00	3	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg==	2025-12-24	\N	f	t	t	t	f	2025-12-23 14:55:33.379164	2025-12-23 14:55:33.379164
-a9ca2adf-a5e8-4fb8-867e-b8bfdf8f5e63	22222222-2222-2222-2222-222222222222	5	Lot Epicerie	Produits d'epicerie varies proches de la date limite mais encore excellents	8.50	18.00	5	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI/an+P3wAAAABJRU5ErkJggg==	2026-01-02	\N	f	f	t	t	f	2025-12-23 14:55:33.379164	2025-12-23 14:55:33.379164
-efa85267-5f2e-44e9-8045-316bcff50e31	33333333-3333-3333-3333-333333333333	1	Lot Fruits & Legumes	Assortiment de fruits et legumes bio du jour a prix reduit	6.00	15.00	4	data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==	2025-12-26	\N	t	t	t	t	f	2025-12-23 14:55:33.379164	2025-12-23 14:55:33.379164
+COPY public.products (id, vendeur_id, category_id, nom, description, prix, prix_original, stock, image_url, dlc, is_disponible, reserved_for_associations, created_at, updated_at, is_lot) FROM stdin;
+1cd41925-4167-4772-850e-006b42f57868	e3488d05-9668-49dc-ac1b-8f57797c12e8	5	T	\N	5.00	10.00	2	https://res.cloudinary.com/dzrlsqsz2/image/upload/v1766629349/ecostock/products/ktimkvjnkj8x0h0ypigv.jpg	2025-12-26	t	f	2025-12-25 03:22:30.603656	2025-12-25 03:22:30.603656	f
+d022293b-3297-4b80-ac44-1aa50ffdfbc9	e3488d05-9668-49dc-ac1b-8f57797c12e8	6	Lot	\N	10.00	15.00	5	https://res.cloudinary.com/dzrlsqsz2/image/upload/v1766663162/ecostock/products/gh18jjzxc5ncowiiopsw.jpg	2025-12-26	t	f	2025-12-25 12:46:03.82571	2025-12-25 12:46:03.82571	t
+54e9feb6-cf67-4c03-9d57-b0506a80484d	e3488d05-9668-49dc-ac1b-8f57797c12e8	8	Thon	\N	1000.00	2000.00	5	\N	2025-12-26	t	f	2025-12-25 13:29:23.322941	2025-12-25 13:29:23.322941	f
 \.
 
 
@@ -770,16 +947,19 @@ COPY public.reviews (id, vendeur_id, client_id, note, created_at) FROM stdin;
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, prenom, nom, email, password, user_type, nom_association, telephone, adresse, ville, code_postal, photo_profil, description, is_active, created_at, updated_at, profile_image, phone) FROM stdin;
-b7b283e0-02c8-4924-9cd4-ac371212970e	a	À	a@gmail.com	$2a$10$43Hrg1pDrYc3jtFz4ArxTOa9UEpZZUC.iH.kN3Vj3bhe.mU78Pj3q	client	\N	\N	\N	\N	\N	\N	\N	t	2025-12-22 23:01:26.830087	2025-12-22 23:01:26.830087	\N	\N
-feab953f-26ef-43cc-8e94-39388427a623	a	À	aa@gmail.com	$2a$10$pK8goxw.pjCP8UxaS/qWHe8XJUTBJsh2zm1Egkuk6oZX5HaLLXoai	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-22 23:57:21.26449	2025-12-22 23:57:21.26449	\N	\N
-04ab8455-3e8c-427d-8238-2a82231d3171	a	À	aaaa@gmail.com	$2a$10$RybWti68Q5gVqpr4alOQn.dh9JiqaIKLmrP2GrLpBjrvFaG4LyTei	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 08:56:08.936281	2025-12-23 08:56:08.936281	\N	\N
-c3f47217-db30-45a7-8c0e-b65ada599c17	b	B	b@gmail.com	$2a$10$ZKwY1DCd96sHEetFhfjM8.JDfEkhT0XJslfaZIax4xaCzC2QcYNPa	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:11:47.373077	2025-12-23 09:11:47.373077	\N	\N
-c30ca161-9e65-43f3-82af-291b064e4951	a	A	aaaaa@gmail.com	$2a$10$9UuPopKHRVDOcGl61IOcwe0HlWN711baWA/C3MvOuQJwr6irZoDRa	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:23:10.602341	2025-12-23 09:23:10.602341	\N	\N
-38b47b74-fc97-4c0c-9c59-b3855aa7c147	a	À	q@gmail.com	$2a$10$ORf3wAciNBUd1BAMo3Eo9uDwIjhftCngpXB2hm7ds6mzx4q3jPkzm	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:33:43.388729	2025-12-23 09:33:43.388729	\N	\N
-11111111-1111-1111-1111-111111111111	Pierre	Martin	pierre.martin@boutique.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518	\N	\N
-22222222-2222-2222-2222-222222222222	Marie	Dubois	marie.dubois@epicerie.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518	\N	\N
-33333333-3333-3333-3333-333333333333	Jean	Bernard	jean.bernard@bio.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518	\N	\N
+COPY public.users (id, prenom, nom, email, password, user_type, nom_association, telephone, adresse, ville, code_postal, photo_profil, description, is_active, created_at, updated_at) FROM stdin;
+b7b283e0-02c8-4924-9cd4-ac371212970e	a	À	a@gmail.com	$2a$10$43Hrg1pDrYc3jtFz4ArxTOa9UEpZZUC.iH.kN3Vj3bhe.mU78Pj3q	client	\N	\N	\N	\N	\N	\N	\N	t	2025-12-22 23:01:26.830087	2025-12-22 23:01:26.830087
+04ab8455-3e8c-427d-8238-2a82231d3171	a	À	aaaa@gmail.com	$2a$10$RybWti68Q5gVqpr4alOQn.dh9JiqaIKLmrP2GrLpBjrvFaG4LyTei	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 08:56:08.936281	2025-12-23 08:56:08.936281
+c3f47217-db30-45a7-8c0e-b65ada599c17	b	B	b@gmail.com	$2a$10$ZKwY1DCd96sHEetFhfjM8.JDfEkhT0XJslfaZIax4xaCzC2QcYNPa	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:11:47.373077	2025-12-23 09:11:47.373077
+c30ca161-9e65-43f3-82af-291b064e4951	a	A	aaaaa@gmail.com	$2a$10$9UuPopKHRVDOcGl61IOcwe0HlWN711baWA/C3MvOuQJwr6irZoDRa	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:23:10.602341	2025-12-23 09:23:10.602341
+38b47b74-fc97-4c0c-9c59-b3855aa7c147	a	À	q@gmail.com	$2a$10$ORf3wAciNBUd1BAMo3Eo9uDwIjhftCngpXB2hm7ds6mzx4q3jPkzm	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 09:33:43.388729	2025-12-23 09:33:43.388729
+11111111-1111-1111-1111-111111111111	Pierre	Martin	pierre.martin@boutique.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518
+22222222-2222-2222-2222-222222222222	Marie	Dubois	marie.dubois@epicerie.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518
+33333333-3333-3333-3333-333333333333	Jean	Bernard	jean.bernard@bio.fr	$2a$10$abcdefghijklmnopqrstuvwxyz123456	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 14:55:33.374518	2025-12-23 14:55:33.374518
+32f1dc11-6101-4b50-9423-b8b45ae2c4c2	a	A	x@gmail.com	$2a$10$KRwj8VRQXhozY9CsLW1jHOsjCvewTu3/yDrwKCuVv4IxTWEydBuyW	client	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 19:25:50.927266	2025-12-23 19:25:50.927266
+1e5a51ee-0db3-4d60-b5d7-7e2846489b5d	nouveau	A	mail@gmail.com	$2a$10$nslmBt0rPjCMuaTTkoqe4.ZLD2KYQCCiGxSxCqmDPpcS6EtY9.eBu	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 19:53:49.704479	2025-12-23 19:54:12.170132
+feab953f-26ef-43cc-8e94-39388427a623	nouveau	À	aa@gmail.com	$2a$10$pK8goxw.pjCP8UxaS/qWHe8XJUTBJsh2zm1Egkuk6oZX5HaLLXoai	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-22 23:57:21.26449	2025-12-23 19:58:03.614591
+e3488d05-9668-49dc-ac1b-8f57797c12e8	vendeur	Vendeur	vendeur@gmail.com	$2a$10$34trZ1svkCMHnWYr0SN5dujd/TwcKCzLBuMw/b2kbQkOQ8wY/huYm	vendeur	\N	\N	\N	\N	\N	\N	\N	t	2025-12-23 20:52:28.633771	2025-12-23 20:52:28.633771
 \.
 
 
@@ -801,7 +981,7 @@ SELECT pg_catalog.setval('public.favorites_id_seq', 1, false);
 -- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ingredients_id_seq', 1, false);
+SELECT pg_catalog.setval('public.ingredients_id_seq', 147, true);
 
 
 --
@@ -829,7 +1009,7 @@ SELECT pg_catalog.setval('public.panier_id_seq', 1, false);
 -- Name: product_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.product_items_id_seq', 1, false);
+SELECT pg_catalog.setval('public.product_items_id_seq', 6, true);
 
 
 --
@@ -845,6 +1025,14 @@ SELECT pg_catalog.setval('public.recipes_id_seq', 1, false);
 
 ALTER TABLE ONLY public.categories
     ADD CONSTRAINT categories_nom_key UNIQUE (nom);
+
+
+--
+-- Name: categories categories_nom_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_nom_unique UNIQUE (nom);
 
 
 --
@@ -936,6 +1124,21 @@ ALTER TABLE ONLY public.panier
 
 
 --
+-- Name: panier panier_unique_user_product; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.panier
+    ADD CONSTRAINT panier_unique_user_product UNIQUE (user_id, product_id);
+
+
+--
+-- Name: CONSTRAINT panier_unique_user_product ON panier; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON CONSTRAINT panier_unique_user_product ON public.panier IS 'Un utilisateur ne peut avoir qu''une seule ligne par produit dans son panier';
+
+
+--
 -- Name: panier panier_user_id_product_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -981,6 +1184,21 @@ ALTER TABLE ONLY public.recipes
 
 ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reviews reviews_unique_client_vendeur; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_unique_client_vendeur UNIQUE (client_id, vendeur_id);
+
+
+--
+-- Name: CONSTRAINT reviews_unique_client_vendeur ON reviews; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON CONSTRAINT reviews_unique_client_vendeur ON public.reviews IS 'Un client ne peut noter qu''une seule fois un vendeur';
 
 
 --
@@ -1040,6 +1258,13 @@ CREATE INDEX idx_ingredients_name ON public.ingredients USING btree (name);
 --
 
 CREATE INDEX idx_lot_items_lot ON public.lot_items USING btree (lot_id);
+
+
+--
+-- Name: idx_lot_items_lot_product; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_lot_items_lot_product ON public.lot_items USING btree (lot_id, product_id);
 
 
 --
@@ -1392,5 +1617,5 @@ ALTER TABLE ONLY public.reviews
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 38DZ3dqE88liqMWMayCbaFPe8cuWkcUKHtDIYQ2MuKJu0rd1noeZtn3pfrrbTI3
+\unrestrict PNcBZNcwSkN7PiPUu8kfXY2Q1qTWD8j6ziDpXxuK2nCDAbSU64mXN4JFzXAU0gJ
 

@@ -13,6 +13,9 @@ export const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -114,5 +117,16 @@ export const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     color: colors.gray[500],
     textAlign: 'center',
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterIcon: {
+    fontSize: 24,
   },
 });

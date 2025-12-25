@@ -22,10 +22,7 @@ interface Product {
   image_url: string | null;
   dlc: string;
   date_peremption: string | null;
-  is_bio: boolean;
-  is_local: boolean;
   is_disponible: boolean;
-  is_lot: boolean;
   reserved_for_associations: boolean;
   category_name: string | null;
   status: 'active' | 'expiring_soon' | 'expired';
@@ -164,19 +161,6 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
             {product.category_name && (
               <Text style={styles.productCategory}>{product.category_name}</Text>
             )}
-
-            <View style={styles.productBadges}>
-              {product.is_bio && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Bio</Text>
-                </View>
-              )}
-              {product.is_local && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Local</Text>
-                </View>
-              )}
-            </View>
 
             <View style={styles.productPriceRow}>
               <Text style={styles.productPrice}>{parseFloat(product.prix).toFixed(2)} EUR</Text>

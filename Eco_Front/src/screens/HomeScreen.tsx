@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  TouchableOpacity,
+  Modal,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { styles } from './HomeScreen.styles';
 import { ProductCard } from '../components/ProductCard';
+import { FilterModal } from '../components/FilterModal';
 import * as API from '../services/api';
 
 interface Product {
@@ -20,16 +25,15 @@ interface Product {
   stock: number;
   image_url: string | null;
   dlc: string;
-  is_bio: boolean;
-  is_local: boolean;
-  is_disponible: boolean;
   is_lot: boolean;
+  is_disponible: boolean;
   nom_commerce: string;
   adresse: string;
   latitude: string | null;
   longitude: string | null;
   distance: string | null;
   walking_time: number | null;
+  cycling_time: number | null;
   category_name: string;
 }
 
@@ -41,17 +45,84 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [filters, setFilters] = useState({
+    category: undefined as string | undefined,
+    minPrice: undefined as number | undefined,
+    maxPrice: undefined as number | undefined,
+    maxDaysUntilDlc: undefined as number | undefined,
+    maxDistance: undefined as number | undefined,
+    sortBy: undefined as 'price_asc' | 'price_desc' | 'distance_asc' | 'distance_desc' | undefined,
+  });
+
+  useEffect(() => {
+    getUserLocation();
+  }, []);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [filters]);
+
+  // Recharger les produits à chaque fois que l'écran obtient le focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[HomeScreen] Screen focused - reloading products');
+      loadProducts();
+    }, [])
+  );
+
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.error('Erreur récupération localisation:', error);
+    }
+  };
 
   const loadProducts = async () => {
     try {
-      const response = await API.getProducts();
+      const response = await API.getProducts(
+        filters.category,
+        filters.minPrice,
+        filters.maxPrice,
+        filters.maxDaysUntilDlc,
+        filters.maxDistance,
+        userLocation?.latitude,
+        userLocation?.longitude
+      );
 
       if (response.success) {
-        setProducts(response.products);
+        let sortedProducts = response.products;
+
+        // Appliquer le tri côté client
+        if (filters.sortBy) {
+          sortedProducts = [...sortedProducts].sort((a, b) => {
+            switch (filters.sortBy) {
+              case 'price_asc':
+                return parseFloat(a.prix) - parseFloat(b.prix);
+              case 'price_desc':
+                return parseFloat(b.prix) - parseFloat(a.prix);
+              case 'distance_asc':
+                if (!a.distance || !b.distance) return 0;
+                return parseFloat(a.distance) - parseFloat(b.distance);
+              case 'distance_desc':
+                if (!a.distance || !b.distance) return 0;
+                return parseFloat(b.distance) - parseFloat(a.distance);
+              default:
+                return 0;
+            }
+          });
+        }
+
+        setProducts(sortedProducts);
       } else {
         Alert.alert('Erreur', response.message || 'Impossible de charger les produits');
       }
@@ -63,6 +134,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const handleApplyFilters = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    setShowFilterModal(false);
+    setLoading(true);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      category: undefined,
+      minPrice: undefined,
+      maxPrice: undefined,
+      maxDaysUntilDlc: undefined,
+      maxDistance: undefined,
+      sortBy: undefined,
+    });
+    setShowFilterModal(false);
+    setLoading(true);
   };
 
   const handleRefresh = () => {
@@ -116,6 +206,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
             <Text style={styles.slogan}>Achetez tout, payez moins a l'excellence</Text>
           </View>
         </View>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <Text style={styles.filterIcon}>🔽</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -139,6 +235,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
             <Text style={styles.emptyText}>Aucun produit disponible pour le moment</Text>
           </View>
         }
+      />
+
+      <FilterModal
+        visible={showFilterModal}
+        filters={filters}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+        onClose={() => setShowFilterModal(false)}
       />
     </View>
   );

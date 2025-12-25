@@ -14,18 +14,6 @@ import * as Location from 'expo-location';
 import { styles } from './ProductDetailScreen.styles';
 import * as API from '../services/api';
 
-interface LotItem {
-  id: string;
-  nom: string;
-  description: string;
-  prix: string;
-  prix_original: string;
-  image_url: string | null;
-  dlc: string;
-  is_bio: boolean;
-  is_local: boolean;
-}
-
 interface Product {
   id: string;
   nom: string;
@@ -35,21 +23,19 @@ interface Product {
   stock: number;
   image_url: string | null;
   dlc: string;
-  is_bio: boolean;
-  is_local: boolean;
+  date_peremption: string | null;
   is_disponible: boolean;
-  is_lot: boolean;
   nom_commerce: string;
   adresse: string;
   latitude: string | null;
   longitude: string | null;
   distance: string | null;
   walking_time: number | null;
+  cycling_time: number | null;
   transit_time: number | null;
   category_name: string;
   ingredient_nom: string | null;
   ingredient_id: string | null;
-  lot_items?: LotItem[];
 }
 
 interface ProductDetailScreenProps {
@@ -218,24 +204,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             )}
           </View>
 
-          <View style={styles.badges}>
-            {product.is_bio && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Bio</Text>
-              </View>
-            )}
-            {product.is_local && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Local</Text>
-              </View>
-            )}
-            {product.is_lot && (
-              <View style={styles.badgeLot}>
-                <Text style={styles.badgeLotText}>Lot</Text>
-              </View>
-            )}
-          </View>
-
           <View style={styles.priceContainer}>
             <Text style={styles.price}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
             {product.prix_original && (
@@ -255,7 +223,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           {product.ingredient_nom && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Ingredient</Text>
-              <Text style={styles.description}>Ce produit correspond a l'ingredient: {product.ingredient_nom}</Text>
+              <Text style={styles.description}>{product.ingredient_nom}</Text>
             </View>
           )}
 
@@ -272,6 +240,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     {product.walking_time} min a pied
                   </Text>
                 </View>
+                {product.cycling_time && (
+                  <View style={styles.distanceItem}>
+                    <Text style={styles.distanceIcon}>🚴</Text>
+                    <Text style={styles.distanceText}>
+                      {product.cycling_time} min a velo
+                    </Text>
+                  </View>
+                )}
                 {product.transit_time && (
                   <View style={styles.distanceItem}>
                     <Text style={styles.distanceIcon}>🚌</Text>
@@ -308,47 +284,18 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             </View>
             {product.dlc && (
               <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Date limite</Text>
+                <Text style={styles.infoLabel}>DLC</Text>
                 <Text style={styles.infoValue}>{formatDate(product.dlc)}</Text>
               </View>
             )}
           </View>
 
-          {product.is_lot && product.lot_items && product.lot_items.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Contenu du lot ({product.lot_items.length} produits)
-              </Text>
-              {product.lot_items.map((item, index) => (
-                <View key={item.id} style={styles.lotItem}>
-                  <View style={styles.lotItemHeader}>
-                    <Text style={styles.lotItemName}>{item.nom}</Text>
-                    <View style={styles.lotItemBadges}>
-                      {item.is_bio && (
-                        <View style={styles.smallBadge}>
-                          <Text style={styles.smallBadgeText}>Bio</Text>
-                        </View>
-                      )}
-                      {item.is_local && (
-                        <View style={styles.smallBadge}>
-                          <Text style={styles.smallBadgeText}>Local</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  {item.description && (
-                    <Text style={styles.lotItemDescription}>{item.description}</Text>
-                  )}
-                  <View style={styles.lotItemFooter}>
-                    <Text style={styles.lotItemPrice}>
-                      {parseFloat(item.prix).toFixed(2)} EUR
-                    </Text>
-                    {item.dlc && (
-                      <Text style={styles.lotItemDlc}>DLC: {formatDate(item.dlc)}</Text>
-                    )}
-                  </View>
-                </View>
-              ))}
+          {product.date_peremption && (
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoLabel}>Date de péremption</Text>
+                <Text style={styles.infoValue}>{formatDate(product.date_peremption)}</Text>
+              </View>
             </View>
           )}
 

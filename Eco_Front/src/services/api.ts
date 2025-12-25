@@ -184,12 +184,44 @@ export const uploadProfileImage = async (imageBase64: string) => {
   }
 };
 
-export const getProducts = async (latitude?: number, longitude?: number) => {
+export const getProducts = async (
+  category?: string,
+  minPrice?: number,
+  maxPrice?: number,
+  maxDaysUntilDlc?: number,
+  maxDistance?: number,
+  latitude?: number,
+  longitude?: number
+) => {
   try {
-    let url = `${API_URL}/products`;
+    const params = new URLSearchParams();
+
     if (latitude !== undefined && longitude !== undefined) {
-      url += `?latitude=${latitude}&longitude=${longitude}`;
+      params.append('latitude', latitude.toString());
+      params.append('longitude', longitude.toString());
     }
+
+    if (category) {
+      params.append('category', category);
+    }
+
+    if (minPrice !== undefined) {
+      params.append('minPrice', minPrice.toString());
+    }
+
+    if (maxPrice !== undefined) {
+      params.append('maxPrice', maxPrice.toString());
+    }
+
+    if (maxDaysUntilDlc !== undefined) {
+      params.append('maxDaysUntilDlc', maxDaysUntilDlc.toString());
+    }
+
+    if (maxDistance !== undefined) {
+      params.append('maxDistance', maxDistance.toString());
+    }
+
+    const url = `${API_URL}/products${params.toString() ? `?${params.toString()}` : ''}`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -201,6 +233,26 @@ export const getProducts = async (latitude?: number, longitude?: number) => {
       throw error;
     }
     throw new Error('Impossible de récupérer les produits');
+  }
+};
+
+export const searchProducts = async (query: string, latitude?: number, longitude?: number) => {
+  try {
+    let url = `${API_URL}/products/search?query=${encodeURIComponent(query)}`;
+    if (latitude !== undefined && longitude !== undefined) {
+      url += `&latitude=${latitude}&longitude=${longitude}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de rechercher les produits');
   }
 };
 

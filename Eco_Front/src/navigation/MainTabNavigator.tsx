@@ -4,6 +4,7 @@ import { Alert, View } from 'react-native';
 import { MainTabParamList } from './types';
 import { HomeNavigator } from './HomeNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
+import { SearchNavigator } from './SearchNavigator';
 import { BottomNavBar } from '../components/BottomNavBar';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -66,7 +67,7 @@ export const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Search"
-        component={ComingSoonScreen}
+        component={SearchNavigator}
         options={{ title: 'Recherche' }}
       />
       <Tab.Screen

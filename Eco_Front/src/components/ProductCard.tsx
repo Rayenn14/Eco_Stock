@@ -10,10 +10,7 @@ interface Product {
   stock: number;
   image_url: string | null;
   dlc: string;
-  is_bio: boolean;
-  is_local: boolean;
   is_disponible: boolean;
-  is_lot: boolean;
   nom_commerce: string;
   adresse: string;
   latitude: string | null;
@@ -67,23 +64,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           )}
         </View>
 
-        <View style={styles.badges}>
-          {product.is_bio && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Bio</Text>
-            </View>
-          )}
-          {product.is_local && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Local</Text>
-            </View>
-          )}
-          {product.is_lot && (
-            <View style={styles.badgeLot}>
-              <Text style={styles.badgeLotText}>Lot</Text>
-            </View>
-          )}
-        </View>
+        {product.category_name && (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{product.category_name}</Text>
+          </View>
+        )}
 
         <View style={styles.priceContainer}>
           <Text style={styles.price}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
@@ -186,14 +171,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  badgeLot: {
-    backgroundColor: '#DBEAFE',
+  categoryBadge: {
+    backgroundColor: '#EEF2FF',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
-  badgeLotText: {
-    color: '#1E40AF',
+  categoryText: {
+    color: '#4F46E5',
     fontSize: 11,
     fontWeight: '600',
   },

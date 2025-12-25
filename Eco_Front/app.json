@@ -15,7 +15,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Calculer la distance jusqu'au magasin"
+        "NSLocationWhenInUseUsageDescription": "Calculer la distance jusqu'au magasin",
+        "NSCameraUsageDescription": "Prendre des photos de vos produits",
+        "NSPhotoLibraryUsageDescription": "Choisir des photos de vos produits"
       }
     },
     "android": {
@@ -27,7 +29,10 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ],
       "config": {
         "googleMaps": {
@@ -39,7 +44,8 @@
       "favicon": "./assets/images/EcoStockLogo.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

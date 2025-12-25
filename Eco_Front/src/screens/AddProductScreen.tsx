@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as API from '../services/api';
 import { styles } from './AddProductScreen.styles';
@@ -18,6 +19,12 @@ interface Category {
   id: number;
   nom: string;
   description: string;
+}
+
+interface Ingredient {
+  id: string;
+  name: string;
+  score?: number;
 }
 
 interface AddProductScreenProps {
@@ -34,18 +41,33 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
   const [prix, setPrix] = useState('');
   const [prixOriginal, setPrixOriginal] = useState('');
   const [stock, setStock] = useState('');
-  const [dlc, setDlc] = useState('');
+  const [dlc, setDlc] = useState<Date>(new Date(Date.now() + 86400000)); // Tomorrow by default
+  const [showDlcPicker, setShowDlcPicker] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isBio, setIsBio] = useState(false);
-  const [isLocal, setIsLocal] = useState(false);
   const [reservedForAssociations, setReservedForAssociations] = useState(false);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [ingredientSearch, setIngredientSearch] = useState('');
+  const [ingredientResults, setIngredientResults] = useState<Ingredient[]>([]);
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
+  const [showIngredientResults, setShowIngredientResults] = useState(false);
+  const [isLot, setIsLot] = useState(false);
+  const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadCategories = async () => {
@@ -61,7 +83,113 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
     }
   };
 
+  const searchIngredients = async (query: string) => {
+    if (query.length < 2) {
+      setIngredientResults([]);
+      setShowIngredientResults(false);
+      return;
+    }
+
+    try {
+      const response = await API.searchIngredients(query);
+      if (response.success && response.ingredients) {
+        setIngredientResults(response.ingredients);
+        setShowIngredientResults(true);
+      }
+    } catch (error: any) {
+      console.error('Erreur recherche ingrédients:', error);
+    }
+  };
+
+  const handleIngredientSearchChange = (text: string) => {
+    setIngredientSearch(text);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchIngredients(text);
+    }, 300); // 300ms delay
+  };
+
+  const handleSelectIngredient = (ingredient: Ingredient) => {
+    setSelectedIngredient(ingredient);
+    setIngredientSearch('');
+    setShowIngredientResults(false);
+    setIngredientResults([]);
+  };
+
+  const handleRemoveIngredient = () => {
+    setSelectedIngredient(null);
+  };
+
+  const handleAddIngredient = (ingredient: Ingredient) => {
+    if (!selectedIngredients.find(i => i.id === ingredient.id)) {
+      setSelectedIngredients([...selectedIngredients, ingredient]);
+    }
+    setIngredientSearch('');
+    setShowIngredientResults(false);
+    setIngredientResults([]);
+  };
+
+  const handleRemoveIngredientFromList = (ingredientId: string) => {
+    setSelectedIngredients(selectedIngredients.filter(i => i.id !== ingredientId));
+  };
+
   const handlePickImage = async () => {
+    Alert.alert(
+      'Ajouter une photo',
+      'Choisissez une option',
+      [
+        {
+          text: 'Prendre une photo',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: 'Choisir de la galerie',
+          onPress: handleChooseFromGallery,
+        },
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          'Nous avons besoin de votre permission pour accéder à la caméra.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setImageUrl(base64Image);
+      }
+    } catch (error) {
+      console.error('Erreur capture photo:', error);
+      Alert.alert('Erreur', 'Impossible de prendre une photo');
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -91,22 +219,18 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
     }
   };
 
-  const formatDateForInput = (dateString: string) => {
-    // Convertir format DD/MM/YYYY en YYYY-MM-DD pour l'affichage
-    const parts = dateString.split('/');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return dateString;
+  const formatDateForDisplay = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
-  const formatDateForAPI = (dateString: string) => {
-    // Convertir format DD/MM/YYYY en YYYY-MM-DD pour l'API
-    const parts = dateString.split('/');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return dateString;
+  const formatDateForAPI = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const validateForm = () => {
@@ -125,30 +249,14 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       return false;
     }
 
-    if (!dlc.trim()) {
-      Alert.alert('Erreur', 'La date limite de consommation est obligatoire');
-      return false;
-    }
-
-    // Valider le format de la date (DD/MM/YYYY)
-    const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!datePattern.test(dlc)) {
-      Alert.alert('Erreur', 'Format de date invalide. Utilisez JJ/MM/AAAA');
-      return false;
-    }
-
-    // Vérifier que la date n'est pas dans le passé
-    const parts = dlc.split('/');
-    const dlcDate = new Date(
-      parseInt(parts[2]),
-      parseInt(parts[1]) - 1,
-      parseInt(parts[0])
-    );
+    // Vérifier que la DLC n'est pas dans le passé (ou aujourd'hui)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const dlcDate = new Date(dlc);
+    dlcDate.setHours(0, 0, 0, 0);
 
-    if (dlcDate < today) {
-      Alert.alert('Erreur', 'La date limite ne peut pas être dans le passé');
+    if (dlcDate <= today) {
+      Alert.alert('Erreur', 'La date limite de consommation doit être au moins demain');
       return false;
     }
 
@@ -182,9 +290,9 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
         image_url: imageUrl || undefined,
         dlc: formatDateForAPI(dlc),
         category_id: categoryId || undefined,
-        is_bio: isBio,
-        is_local: isLocal,
+        is_lot: isLot,
         reserved_for_associations: reservedForAssociations,
+        ingredient_ids: isLot ? selectedIngredients.map(i => i.id) : (selectedIngredient ? [selectedIngredient.id] : undefined),
       };
 
       const response = await API.addProduct(productData);
@@ -293,34 +401,47 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
           </View>
         </View>
 
-        {/* Stock et DLC */}
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.flex1]}>
-            <Text style={styles.label}>
-              Stock <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="10"
-              value={stock}
-              onChangeText={setStock}
-              keyboardType="number-pad"
-              editable={!loading}
-            />
-          </View>
+        {/* Stock */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Stock <Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="10"
+            value={stock}
+            onChangeText={setStock}
+            keyboardType="number-pad"
+            editable={!loading}
+          />
+        </View>
 
-          <View style={[styles.inputGroup, styles.flex1, styles.marginLeft]}>
-            <Text style={styles.label}>
-              DLC <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="31/12/2025"
+        {/* DLC */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Date Limite de Consommation (DLC) <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowDlcPicker(true)}
+            disabled={loading}
+          >
+            <Text style={{ color: '#111827' }}>{formatDateForDisplay(dlc)}</Text>
+          </TouchableOpacity>
+          {showDlcPicker && (
+            <DateTimePicker
               value={dlc}
-              onChangeText={setDlc}
-              editable={!loading}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date(Date.now() + 86400000)} // Tomorrow
+              onChange={(event, selectedDate) => {
+                setShowDlcPicker(Platform.OS === 'ios');
+                if (selectedDate) {
+                  setDlc(selectedDate);
+                }
+              }}
             />
-          </View>
+          )}
         </View>
 
         {/* Catégorie */}
@@ -373,31 +494,145 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
           )}
         </View>
 
+        {/* Section is_lot */}
+        <View style={styles.inputGroup}>
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => {
+              setIsLot(!isLot);
+              if (!isLot) {
+                // Passer en mode lot: vider l'ingrédient unique
+                setSelectedIngredient(null);
+              } else {
+                // Passer en mode normal: vider les ingrédients multiples
+                setSelectedIngredients([]);
+              }
+            }}
+            disabled={loading}
+          >
+            <View style={[styles.checkbox, isLot && styles.checkboxChecked]}>
+              {isLot && <Text style={styles.checkboxIcon}>✓</Text>}
+            </View>
+            <Text style={styles.checkboxLabel}>Panier surprise / Lot (plusieurs ingrédients)</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Ingrédient(s) */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            {isLot ? 'Ingrédients du lot (optionnel)' : 'Ingrédient (optionnel)'}
+          </Text>
+
+          {isLot ? (
+            // MODE LOT: Plusieurs ingrédients
+            <>
+              {selectedIngredients.length > 0 && (
+                <View style={styles.ingredientsList}>
+                  {selectedIngredients.map((ingredient) => (
+                    <View key={ingredient.id} style={styles.selectedIngredient}>
+                      <Text style={styles.selectedIngredientText}>
+                        {ingredient.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveIngredientFromList(ingredient.id)}
+                        style={styles.removeIngredientButton}
+                        disabled={loading}
+                      >
+                        <Text style={styles.removeIngredientText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.ingredientSearchContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Rechercher un ingrédient à ajouter..."
+                  value={ingredientSearch}
+                  onChangeText={handleIngredientSearchChange}
+                  editable={!loading}
+                />
+                {showIngredientResults && ingredientResults.length > 0 && (
+                  <ScrollView
+                    style={styles.ingredientResultsContainer}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {ingredientResults.map((ingredient) => (
+                      <TouchableOpacity
+                        key={ingredient.id}
+                        style={styles.ingredientResultItem}
+                        onPress={() => handleAddIngredient(ingredient)}
+                      >
+                        <Text style={styles.ingredientResultText}>
+                          {ingredient.name}
+                        </Text>
+                        {ingredient.score !== undefined && (
+                          <Text style={styles.ingredientResultScore}>
+                            Correspondance: {Math.round(ingredient.score * 100)}%
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </>
+          ) : (
+            // MODE NORMAL: Un seul ingrédient (code existant)
+            selectedIngredient ? (
+            <View style={styles.selectedIngredient}>
+              <Text style={styles.selectedIngredientText}>
+                {selectedIngredient.name}
+              </Text>
+              <TouchableOpacity
+                onPress={handleRemoveIngredient}
+                style={styles.removeIngredientButton}
+                disabled={loading}
+              >
+                <Text style={styles.removeIngredientText}>×</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.ingredientSearchContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Rechercher un ingrédient..."
+                value={ingredientSearch}
+                onChangeText={handleIngredientSearchChange}
+                editable={!loading}
+              />
+              {showIngredientResults && ingredientResults.length > 0 && (
+                <ScrollView
+                  style={styles.ingredientResultsContainer}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {ingredientResults.map((ingredient) => (
+                    <TouchableOpacity
+                      key={ingredient.id}
+                      style={styles.ingredientResultItem}
+                      onPress={() => handleSelectIngredient(ingredient)}
+                    >
+                      <Text style={styles.ingredientResultText}>
+                        {ingredient.name}
+                      </Text>
+                      {ingredient.score !== undefined && (
+                        <Text style={styles.ingredientResultScore}>
+                          Correspondance: {Math.round(ingredient.score * 100)}%
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+            )
+          )}
+        </View>
+
         {/* Options */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Options</Text>
-
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => setIsBio(!isBio)}
-            disabled={loading}
-          >
-            <View style={[styles.checkbox, isBio && styles.checkboxChecked]}>
-              {isBio && <Text style={styles.checkboxIcon}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>Produit bio</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => setIsLocal(!isLocal)}
-            disabled={loading}
-          >
-            <View style={[styles.checkbox, isLocal && styles.checkboxChecked]}>
-              {isLocal && <Text style={styles.checkboxIcon}>✓</Text>}
-            </View>
-            <Text style={styles.checkboxLabel}>Produit local</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.checkboxRow}

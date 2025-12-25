@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { uploadImage, deleteImage } = require('../services/cloudinary');
 
 
 // RÉCUPÉRER LE PROFIL
@@ -12,7 +13,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const result = await db.query(
       `SELECT id, prenom, nom, email, user_type, nom_commerce, nom_association,
-       phone, adresse_ligne1, adresse_ligne2, code_postal, ville, pays, profile_image
+       telephone, adresse, code_postal, ville, profile_image
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -78,12 +79,12 @@ router.put('/', authenticateToken, async (req, res) => {
     // Mettre à jour l'utilisateur
     const result = await db.query(
       `UPDATE users
-       SET prenom = $1, nom = $2, email = $3, phone = $4,
+       SET prenom = $1, nom = $2, email = $3, telephone = $4,
            nom_association = $5, adresse = $6,
            code_postal = $7, ville = $8,
            updated_at = NOW()
        WHERE id = $9
-       RETURNING id, prenom, nom, email, phone, user_type, nom_association,
+       RETURNING id, prenom, nom, email, telephone, user_type, nom_association,
                  adresse, code_postal, ville, profile_image`,
       [
         prenom,
@@ -165,9 +166,21 @@ router.post('/upload-image', authenticateToken, async (req, res) => {
       });
     }
 
+    // Récupérer l'ancienne image pour la supprimer si elle existe
+    const userResult = await db.query(
+      'SELECT profile_image FROM users WHERE id = $1',
+      [userId]
+    );
+
+    const oldImage = userResult.rows[0]?.profile_image;
+
+    // Upload vers Cloudinary
+    const imageUrl = await uploadImage(imageBase64, 'ecostock/profiles', `profile_${userId}`);
+
+    // Mettre à jour l'URL dans la base de données
     const result = await db.query(
       'UPDATE users SET profile_image = $1, updated_at = NOW() WHERE id = $2 RETURNING profile_image',
-      [imageBase64, userId]
+      [imageUrl, userId]
     );
 
     if (result.rows.length === 0) {
@@ -175,6 +188,11 @@ router.post('/upload-image', authenticateToken, async (req, res) => {
         success: false,
         message: 'Utilisateur introuvable',
       });
+    }
+
+    // Supprimer l'ancienne image de Cloudinary si elle existe et est différente
+    if (oldImage && oldImage !== imageUrl && oldImage.includes('cloudinary.com')) {
+      await deleteImage(oldImage);
     }
 
     res.json({
