@@ -239,6 +239,11 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       return false;
     }
 
+    if (!description.trim()) {
+      Alert.alert('Erreur', 'La description est obligatoire.\n\nVeuillez indiquer les quantités et détails du produit (ex: "1kg de tomates bio", "Lot de 3 pommes", "500g de pain complet")');
+      return false;
+    }
+
     if (!prix || isNaN(parseFloat(prix)) || parseFloat(prix) <= 0) {
       Alert.alert('Erreur', 'Le prix doit être un nombre supérieur à 0');
       return false;
@@ -359,10 +364,13 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
 
         {/* Description */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>Description *</Text>
+          <Text style={styles.helperText}>
+            Indiquez les quantités et détails (ex: "1kg de tomates", "Lot de 3 pommes", "500g de pain complet")
+          </Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Description du produit"
+            placeholder="Ex: 1kg de tomates cerises bio bien mûres"
             value={description}
             onChangeText={setDescription}
             multiline

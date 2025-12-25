@@ -93,6 +93,14 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       });
     }
 
+    if (!description || !description.trim()) {
+      console.log('[Seller] Validation failed - missing description');
+      return res.status(400).json({
+        success: false,
+        message: 'La description est obligatoire. Veuillez indiquer les quantités et détails du produit (ex: "1kg de tomates", "Lot de 3 pommes")'
+      });
+    }
+
     // Vérifier que la DLC n'est pas déjà passée ou aujourd'hui
     const dlcDate = new Date(dlc);
     const today = new Date();

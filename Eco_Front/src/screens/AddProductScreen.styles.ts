@@ -74,6 +74,12 @@ export const styles = StyleSheet.create({
   required: {
     color: '#DC2626',
   },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 8,
+    lineHeight: 16,
+  },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
