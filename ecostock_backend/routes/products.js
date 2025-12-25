@@ -125,7 +125,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { latitude, longitude, category, minPrice, maxPrice, maxDaysUntilDlc, maxDistance } = req.query;
+    const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance } = req.query;
 
     // Build WHERE conditions
     const conditions = ['p.is_disponible = true', 'p.stock > 0'];
@@ -147,9 +147,9 @@ router.get('/', authenticateToken, async (req, res) => {
       conditions.push(`p.prix <= $${paramIndex++}`);
     }
 
-    if (maxDaysUntilDlc) {
-      params.push(parseInt(maxDaysUntilDlc));
-      conditions.push(`p.dlc <= CURRENT_DATE + INTERVAL '1 day' * $${paramIndex++}`);
+    if (maxDlcDate) {
+      params.push(maxDlcDate);
+      conditions.push(`p.dlc <= $${paramIndex++}`);
     }
 
     const whereClause = conditions.join(' AND ');

@@ -139,4 +139,43 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  datePickerButton: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  datePickerPlaceholder: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  clearDateButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  clearDateText: {
+    fontSize: 14,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  closeDatePickerButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    backgroundColor: '#166534',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeDatePickerText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 });

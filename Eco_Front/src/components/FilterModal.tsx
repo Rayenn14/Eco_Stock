@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { styles } from './FilterModal.styles';
 import * as API from '../services/api';
 
@@ -16,7 +18,7 @@ interface FilterModalProps {
     category?: string;
     minPrice?: number;
     maxPrice?: number;
-    maxDaysUntilDlc?: number;
+    maxDlcDate?: string;
     maxDistance?: number;
     sortBy?: 'price_asc' | 'price_desc' | 'distance_asc' | 'distance_desc';
   };
@@ -41,7 +43,10 @@ export const FilterModal: React.FC<FilterModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(filters.category);
   const [minPrice, setMinPrice] = useState<string>(filters.minPrice?.toString() || '');
   const [maxPrice, setMaxPrice] = useState<string>(filters.maxPrice?.toString() || '');
-  const [maxDaysUntilDlc, setMaxDaysUntilDlc] = useState<string>(filters.maxDaysUntilDlc?.toString() || '');
+  const [maxDlcDate, setMaxDlcDate] = useState<Date | undefined>(
+    filters.maxDlcDate ? new Date(filters.maxDlcDate) : undefined
+  );
+  const [showDlcPicker, setShowDlcPicker] = useState(false);
   const [maxDistance, setMaxDistance] = useState<string>(filters.maxDistance?.toString() || '');
   const [sortBy, setSortBy] = useState<string | undefined>(filters.sortBy);
 
@@ -52,7 +57,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
       setSelectedCategory(filters.category);
       setMinPrice(filters.minPrice?.toString() || '');
       setMaxPrice(filters.maxPrice?.toString() || '');
-      setMaxDaysUntilDlc(filters.maxDaysUntilDlc?.toString() || '');
+      setMaxDlcDate(filters.maxDlcDate ? new Date(filters.maxDlcDate) : undefined);
       setMaxDistance(filters.maxDistance?.toString() || '');
       setSortBy(filters.sortBy);
     }
@@ -74,7 +79,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
       category: selectedCategory,
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-      maxDaysUntilDlc: maxDaysUntilDlc ? parseInt(maxDaysUntilDlc) : undefined,
+      maxDlcDate: maxDlcDate ? maxDlcDate.toISOString().split('T')[0] : undefined,
       maxDistance: maxDistance ? parseFloat(maxDistance) : undefined,
       sortBy: sortBy as any,
     });
@@ -84,10 +89,26 @@ export const FilterModal: React.FC<FilterModalProps> = ({
     setSelectedCategory(undefined);
     setMinPrice('');
     setMaxPrice('');
-    setMaxDaysUntilDlc('');
+    setMaxDlcDate(undefined);
     setMaxDistance('');
     setSortBy(undefined);
     onReset();
+  };
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDlcDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDlcPicker(false);
+    }
+    if (selectedDate) {
+      setMaxDlcDate(selectedDate);
+    }
   };
 
   return (
@@ -175,14 +196,40 @@ export const FilterModal: React.FC<FilterModalProps> = ({
 
             {/* DLC */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Date limite (jours max)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 7 (produits qui expirent dans 7 jours max)"
-                keyboardType="number-pad"
-                value={maxDaysUntilDlc}
-                onChangeText={setMaxDaysUntilDlc}
-              />
+              <Text style={styles.sectionTitle}>Date limite de consommation</Text>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => setShowDlcPicker(true)}
+              >
+                <Text style={maxDlcDate ? styles.datePickerText : styles.datePickerPlaceholder}>
+                  {maxDlcDate ? formatDate(maxDlcDate) : 'Sélectionner une date maximum'}
+                </Text>
+              </TouchableOpacity>
+              {maxDlcDate && (
+                <TouchableOpacity
+                  style={styles.clearDateButton}
+                  onPress={() => setMaxDlcDate(undefined)}
+                >
+                  <Text style={styles.clearDateText}>Effacer la date</Text>
+                </TouchableOpacity>
+              )}
+              {showDlcPicker && (
+                <DateTimePicker
+                  value={maxDlcDate || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleDlcDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
+              {Platform.OS === 'ios' && showDlcPicker && (
+                <TouchableOpacity
+                  style={styles.closeDatePickerButton}
+                  onPress={() => setShowDlcPicker(false)}
+                >
+                  <Text style={styles.closeDatePickerText}>Fermer</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Distance */}

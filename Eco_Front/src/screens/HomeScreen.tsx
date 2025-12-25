@@ -51,7 +51,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     category: undefined as string | undefined,
     minPrice: undefined as number | undefined,
     maxPrice: undefined as number | undefined,
-    maxDaysUntilDlc: undefined as number | undefined,
+    maxDlcDate: undefined as string | undefined,
     maxDistance: undefined as number | undefined,
     sortBy: undefined as 'price_asc' | 'price_desc' | 'distance_asc' | 'distance_desc' | undefined,
   });
@@ -93,7 +93,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
         filters.category,
         filters.minPrice,
         filters.maxPrice,
-        filters.maxDaysUntilDlc,
+        filters.maxDlcDate,
         filters.maxDistance,
         userLocation?.latitude,
         userLocation?.longitude
@@ -147,7 +147,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
       category: undefined,
       minPrice: undefined,
       maxPrice: undefined,
-      maxDaysUntilDlc: undefined,
+      maxDlcDate: undefined,
       maxDistance: undefined,
       sortBy: undefined,
     });

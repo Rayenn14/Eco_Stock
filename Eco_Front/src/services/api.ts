@@ -188,7 +188,7 @@ export const getProducts = async (
   category?: string,
   minPrice?: number,
   maxPrice?: number,
-  maxDaysUntilDlc?: number,
+  maxDlcDate?: string,
   maxDistance?: number,
   latitude?: number,
   longitude?: number
@@ -213,8 +213,8 @@ export const getProducts = async (
       params.append('maxPrice', maxPrice.toString());
     }
 
-    if (maxDaysUntilDlc !== undefined) {
-      params.append('maxDaysUntilDlc', maxDaysUntilDlc.toString());
+    if (maxDlcDate) {
+      params.append('maxDlcDate', maxDlcDate);
     }
 
     if (maxDistance !== undefined) {
