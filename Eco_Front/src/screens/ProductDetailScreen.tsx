@@ -38,6 +38,9 @@ interface Product {
   category_name: string;
   ingredient_nom: string | null;
   ingredient_id: string | null;
+  pickup_start_time: string | null;
+  pickup_end_time: string | null;
+  pickup_instructions: string | null;
 }
 
 interface ProductDetailScreenProps {
@@ -58,6 +61,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
   const { addToCart, isInCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     if (productId) {
@@ -111,6 +115,12 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'N/A';
+    // timeString is in HH:MM:SS format from database
+    return timeString.slice(0, 5); // Extract HH:MM
   };
 
   // Cette fonction n'est plus utilisée car le backend calcule maintenant le temps de transport optimal
@@ -291,6 +301,27 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                 </View>
               </TouchableOpacity>
             )}
+
+            {(product.pickup_start_time || product.pickup_end_time) && (
+              <View style={styles.pickupSection}>
+                <Text style={styles.sectionTitle}>Horaires de retrait</Text>
+                <View style={styles.pickupTimeContainer}>
+                  <Text style={styles.pickupIcon}>🕐</Text>
+                  <Text style={styles.pickupTime}>
+                    {formatTime(product.pickup_start_time)} -{' '}
+                    {formatTime(product.pickup_end_time)}
+                  </Text>
+                </View>
+                {product.pickup_instructions && (
+                  <View style={styles.instructionsContainer}>
+                    <Text style={styles.instructionsIcon}>ℹ️</Text>
+                    <Text style={styles.instructionsText}>
+                      {product.pickup_instructions}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           <View style={styles.infoRow}>
@@ -312,6 +343,33 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                 <Text style={styles.infoLabel}>Date de péremption</Text>
                 <Text style={styles.infoValue}>{formatDate(product.date_peremption)}</Text>
               </View>
+            </View>
+          )}
+
+          {/* Quantity Selector */}
+          {!isInCart(product.id) && (
+            <View style={styles.quantitySection}>
+              <Text style={styles.quantityLabel}>Quantité</Text>
+              <View style={styles.quantitySelector}>
+                <TouchableOpacity
+                  style={[styles.quantityButton, quantity === 1 && styles.quantityButtonDisabled]}
+                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity === 1}
+                >
+                  <Text style={styles.quantityButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityValue}>{quantity}</Text>
+                <TouchableOpacity
+                  style={[styles.quantityButton, quantity >= product.stock && styles.quantityButtonDisabled]}
+                  onPress={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  disabled={quantity >= product.stock}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.quantityHelp}>
+                Maximum: {product.stock} disponible{product.stock > 1 ? 's' : ''}
+              </Text>
             </View>
           )}
 
@@ -337,14 +395,19 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                   stock: product.stock,
                   ingredient_nom: product.ingredient_nom,
                   ingredient_ids: product.ingredient_ids,
+                  quantity: quantity,
                 });
-                Alert.alert('Ajouté au panier', `${product.nom} a été ajouté à votre panier`);
+                Alert.alert(
+                  'Ajouté au panier',
+                  `${quantity} x ${product.nom} ${quantity > 1 ? 'ont été ajoutés' : 'a été ajouté'} à votre panier`
+                );
+                setQuantity(1); // Reset quantity after adding
               }
             }}
             disabled={isInCart(product.id)}
           >
             <Text style={styles.addToCartText}>
-              {isInCart(product.id) ? '✓ Déjà dans le panier' : '🛒 Ajouter au panier'}
+              {isInCart(product.id) ? '✓ Déjà dans le panier' : `🛒 Ajouter au panier (${(parseFloat(product.prix) * quantity).toFixed(2)} EUR)`}
             </Text>
           </TouchableOpacity>
         </View>

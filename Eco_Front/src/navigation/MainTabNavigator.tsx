@@ -9,11 +9,13 @@ import { CartScreen } from '../screens/CartScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
 import { RecipeDetailScreen } from '../screens/RecipeDetailScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
+import { PaymentScreen } from '../screens/PaymentScreen';
 import { BottomNavBar } from '../components/BottomNavBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const RecipesStack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
 
 const RecipesNavigator = () => {
   console.log('[RecipesNavigator] Rendering Recipes stack');
@@ -78,8 +80,9 @@ const CustomTabBar = (props: BottomTabBarProps) => {
   return <BottomNavBar activeScreen={activeScreen} onNavigate={handleNavigate} />;
 };
 
-export const MainTabNavigator = () => {
-  console.log('[MainTabNavigator] Rendering Main tabs');
+// Tab Navigator (bottom tabs)
+const TabNavigator = () => {
+  console.log('[TabNavigator] Rendering tabs');
 
   return (
     <Tab.Navigator
@@ -114,5 +117,26 @@ export const MainTabNavigator = () => {
         options={{ title: 'Profil' }}
       />
     </Tab.Navigator>
+  );
+};
+
+// Main Tab Navigator with Payment modal
+export const MainTabNavigator = () => {
+  console.log('[MainTabNavigator] Rendering Main navigator');
+
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Tabs" component={TabNavigator} />
+      <RootStack.Screen
+        name="Payment"
+        component={PaymentScreen}
+        options={{
+          headerShown: true,
+          title: 'Paiement',
+          presentation: 'modal',
+          headerBackTitle: 'Annuler',
+        }}
+      />
+    </RootStack.Navigator>
   );
 };

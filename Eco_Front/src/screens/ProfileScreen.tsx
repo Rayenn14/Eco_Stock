@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as API from '../services/api';
 import { styles } from './ProfileScreen.styles';
 
 interface ProfileScreenProps {
@@ -18,6 +20,7 @@ interface ProfileScreenProps {
   onNavigateSellerProducts: () => void;
   onNavigateSellerOrders: () => void;
   onNavigateAddProduct: () => void;
+  onNavigateOrders: () => void;
   onNavigateBack: () => void;
   onLogout: () => void;
 }
@@ -28,6 +31,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateSellerProducts,
   onNavigateSellerOrders,
   onNavigateAddProduct,
+  onNavigateOrders,
   onNavigateBack,
   onLogout,
 }) => {
@@ -83,17 +87,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        setProfileImage(imageUri);
+        console.log('[ProfileScreen] Image selected:', imageUri);
 
-        // Sauvegarder temporairement dans SecureStore
-        // TODO: Uploader vers le serveur
-        await SecureStore.setItemAsync('profileImage', imageUri);
+        // Convertir l'image en base64
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: 'base64',
+        });
 
-        Alert.alert('Succès', 'Photo de profil mise à jour !');
+        // Créer le format data URL pour Cloudinary
+        const imageBase64 = `data:image/jpeg;base64,${base64}`;
+        console.log('[ProfileScreen] Uploading to Cloudinary...');
+
+        // Uploader vers Cloudinary via le backend
+        const uploadResponse = await API.uploadProfileImage(imageBase64);
+
+        if (uploadResponse.success && uploadResponse.imageUrl) {
+          console.log('[ProfileScreen] Image uploaded:', uploadResponse.imageUrl);
+          setProfileImage(uploadResponse.imageUrl);
+
+          // Sauvegarder l'URL Cloudinary dans SecureStore
+          await SecureStore.setItemAsync('profileImage', uploadResponse.imageUrl);
+
+          Alert.alert('Succès', 'Photo de profil mise à jour !');
+        } else {
+          throw new Error(uploadResponse.message || 'Upload failed');
+        }
       }
-    } catch (error) {
-      console.error('Erreur sélection image:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner une image');
+    } catch (error: any) {
+      console.error('[ProfileScreen] Error uploading image:', error);
+      Alert.alert('Erreur', error.message || 'Impossible d\'uploader l\'image');
     }
   };
 
@@ -210,30 +232,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               >
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIcon, { backgroundColor: '#E0E7FF' }]}>
-                    <Text style={styles.menuIconText}>📋</Text>
+                    <Text style={styles.menuIconText}>💰</Text>
                   </View>
-                  <Text style={styles.menuItemText}>Mes commandes</Text>
+                  <Text style={styles.menuItemText}>Mes ventes</Text>
                 </View>
                 <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {/* Menu client uniquement */}
-          {user?.user_type !== 'vendeur' && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
-            >
-              <View style={styles.menuItemLeft}>
-                <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-                  <Text style={styles.menuIconText}>📦</Text>
-                </View>
-                <Text style={styles.menuItemText}>Mes commandes</Text>
+          {/* Mes achats - accessible à tout le monde */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={onNavigateOrders}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={styles.menuIconText}>🛒</Text>
               </View>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-          )}
+              <Text style={styles.menuItemText}>Mes achats</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}

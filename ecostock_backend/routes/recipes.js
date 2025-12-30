@@ -229,4 +229,49 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /recipes/ingredients/search - Rechercher des ingrédients pour auto-complétion
+router.get('/ingredients/search', authenticateToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim().length < 2) {
+      return res.json({
+        success: true,
+        ingredients: []
+      });
+    }
+
+    const searchQuery = query.trim().toLowerCase();
+
+    // Rechercher les ingrédients avec scoring
+    const result = await db.query(
+      `SELECT
+        DISTINCT i.id,
+        i.name,
+        CASE
+          WHEN LOWER(i.name) = $1 THEN 100
+          WHEN LOWER(i.name) LIKE $1 || '%' THEN 90
+          WHEN LOWER(i.name) LIKE '%' || $1 || '%' THEN 70
+          ELSE 50
+        END as score
+      FROM ingredients i
+      WHERE LOWER(i.name) LIKE '%' || $1 || '%'
+      ORDER BY score DESC, i.name ASC
+      LIMIT 20`,
+      [searchQuery]
+    );
+
+    res.json({
+      success: true,
+      ingredients: result.rows
+    });
+  } catch (error) {
+    console.error('Error searching ingredients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la recherche d\'ingrédients'
+    });
+  }
+});
+
 module.exports = router;

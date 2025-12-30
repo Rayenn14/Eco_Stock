@@ -64,11 +64,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           )}
         </View>
 
-        {product.category_name && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{product.category_name}</Text>
+        <View style={styles.badges}>
+          {product.category_name && (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{product.category_name}</Text>
+            </View>
+          )}
+          <View style={styles.stockBadge}>
+            <Text style={styles.stockText}>
+              {product.stock} {product.stock > 1 ? 'disponibles' : 'disponible'}
+            </Text>
           </View>
-        )}
+        </View>
 
         <View style={styles.priceContainer}>
           <Text style={styles.price}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
@@ -176,11 +183,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
   },
   categoryText: {
     color: '#4F46E5',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  stockBadge: {
+    backgroundColor: '#D1FAE5',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  stockText: {
+    color: '#166534',
     fontSize: 11,
     fontWeight: '600',
   },

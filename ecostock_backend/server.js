@@ -22,6 +22,7 @@ const productsRoutes = require('./routes/products');
 const sellerRoutes = require('./routes/seller');
 const recipesRoutes = require('./routes/recipes');
 const ingredientsRoutes = require('./routes/ingredients');
+const paymentRoutes = require('./routes/payment');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -29,6 +30,7 @@ app.use('/api/products', productsRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/recipes', recipesRoutes);
 app.use('/api/ingredients', ingredientsRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Route d'accueil
 app.get('/', (req, res) => {

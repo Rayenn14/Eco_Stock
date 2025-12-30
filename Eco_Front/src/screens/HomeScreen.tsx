@@ -8,6 +8,7 @@ import {
   Alert,
   TouchableOpacity,
   Modal,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -165,19 +166,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoBox}>
-              <View style={styles.cartIcon}>
-                <View style={styles.cartBody} />
-                <View style={styles.cartWheels}>
-                  <View style={styles.cartWheel} />
-                  <View style={styles.cartWheel} />
-                </View>
-              </View>
-            </View>
-            <View>
-              <Text style={styles.logoText}>ECO STOCK</Text>
-              <Text style={styles.slogan}>Achetez tout, payez moins a l'excellence</Text>
-            </View>
+            <Image
+              source={require('../../assets/images/EcoStockLogo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
         </View>
         <View style={styles.loadingContainer}>
@@ -192,25 +185,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoBox}>
-            <View style={styles.cartIcon}>
-              <View style={styles.cartBody} />
-              <View style={styles.cartWheels}>
-                <View style={styles.cartWheel} />
-                <View style={styles.cartWheel} />
-              </View>
-            </View>
-          </View>
-          <View>
-            <Text style={styles.logoText}>ECO STOCK</Text>
-            <Text style={styles.slogan}>Achetez tout, payez moins a l'excellence</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/EcoStockLogo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setShowFilterModal(true)}
         >
-          <Text style={styles.filterIcon}>🔽</Text>
+          <Text style={styles.filterIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
 

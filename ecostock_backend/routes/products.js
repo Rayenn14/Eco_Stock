@@ -57,6 +57,8 @@ router.get('/search', authenticateToken, async (req, res) => {
       LEFT JOIN ingredients i ON pi.ingredient_id = i.id
       WHERE p.is_disponible = true
         AND p.stock > 0
+        AND p.dlc >= CURRENT_DATE
+        AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
         AND (
           LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
           OR LOWER(i.name) LIKE '%' || LOWER($1) || '%'
@@ -128,7 +130,12 @@ router.get('/', authenticateToken, async (req, res) => {
     const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance } = req.query;
 
     // Build WHERE conditions
-    const conditions = ['p.is_disponible = true', 'p.stock > 0'];
+    const conditions = [
+      'p.is_disponible = true',
+      'p.stock > 0',
+      'p.dlc >= CURRENT_DATE',
+      '(p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)'
+    ];
     const params = [];
     let paramIndex = 1;
 
@@ -273,6 +280,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
         p.is_disponible,
         p.is_lot,
         p.created_at,
+        p.pickup_start_time,
+        p.pickup_end_time,
+        p.pickup_instructions,
         c.nom_commerce,
         c.adresse,
         c.latitude,

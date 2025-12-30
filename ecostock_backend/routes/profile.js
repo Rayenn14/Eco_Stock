@@ -13,7 +13,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const result = await db.query(
       `SELECT id, prenom, nom, email, user_type, nom_commerce, nom_association,
-       telephone, adresse, code_postal, ville, profile_image
+       telephone, adresse, code_postal, ville, photo_profil
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -85,7 +85,7 @@ router.put('/', authenticateToken, async (req, res) => {
            updated_at = NOW()
        WHERE id = $9
        RETURNING id, prenom, nom, email, telephone, user_type, nom_association,
-                 adresse, code_postal, ville, profile_image`,
+                 adresse, code_postal, ville, photo_profil`,
       [
         prenom,
         nom,
@@ -168,18 +168,18 @@ router.post('/upload-image', authenticateToken, async (req, res) => {
 
     // Récupérer l'ancienne image pour la supprimer si elle existe
     const userResult = await db.query(
-      'SELECT profile_image FROM users WHERE id = $1',
+      'SELECT photo_profil FROM users WHERE id = $1',
       [userId]
     );
 
-    const oldImage = userResult.rows[0]?.profile_image;
+    const oldImage = userResult.rows[0]?.photo_profil;
 
     // Upload vers Cloudinary
     const imageUrl = await uploadImage(imageBase64, 'ecostock/profiles', `profile_${userId}`);
 
     // Mettre à jour l'URL dans la base de données
     const result = await db.query(
-      'UPDATE users SET profile_image = $1, updated_at = NOW() WHERE id = $2 RETURNING profile_image',
+      'UPDATE users SET photo_profil = $1, updated_at = NOW() WHERE id = $2 RETURNING photo_profil',
       [imageUrl, userId]
     );
 
@@ -198,7 +198,7 @@ router.post('/upload-image', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       message: 'Photo de profil mise à jour',
-      profile_image: result.rows[0].profile_image,
+      imageUrl: result.rows[0].photo_profil,
     });
   } catch (error) {
     console.error('Erreur upload image:', error);

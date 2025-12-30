@@ -81,7 +81,10 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       is_lot,
       reserved_for_associations,
       ingredient_id,
-      ingredient_ids
+      ingredient_ids,
+      pickup_start_time,
+      pickup_end_time,
+      pickup_instructions
     } = req.body;
 
     // Validation
@@ -135,8 +138,11 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
         dlc,
         is_lot,
         is_disponible,
-        reserved_for_associations
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11)
+        reserved_for_associations,
+        pickup_start_time,
+        pickup_end_time,
+        pickup_instructions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13, $14)
       RETURNING *`,
       [
         req.user.id,
@@ -149,7 +155,10 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
         cloudinaryImageUrl || null,
         dlc,
         is_lot || false,
-        reserved_for_associations || false
+        reserved_for_associations || false,
+        pickup_start_time || null,
+        pickup_end_time || null,
+        pickup_instructions || null
       ]
     );
 
@@ -307,6 +316,19 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
       });
     }
 
+    // Vérifier si le produit est dans une commande
+    const inOrderCheck = await db.query(
+      'SELECT id FROM commande_items WHERE product_id = $1 LIMIT 1',
+      [productId]
+    );
+
+    if (inOrderCheck.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de supprimer ce produit car il fait partie d\'une commande'
+      });
+    }
+
     const productImage = checkResult.rows[0].image_url;
 
     // Supprimer le produit de la base de données
@@ -412,28 +434,80 @@ router.get('/ingredients/search', authenticateToken, async (req, res) => {
 // Récupérer les commandes du vendeur
 router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
   try {
-    const result = await db.query(
+    const ordersQuery = await db.query(
       `SELECT
-        l.id,
-        l.numero_commande,
-        l.total,
-        l.date_debut_recuperation,
-        l.date_fin_recuperation,
-        l.created_at,
+        c.id as commande_id,
+        c.numero_commande,
+        c.total,
+        c.statut,
+        c.stripe_payment_status,
+        c.paid_at,
+        c.created_at,
         u.prenom as client_prenom,
         u.nom as client_nom,
         u.email as client_email,
-        u.telephone as client_telephone
-      FROM commandes l
-      INNER JOIN users u ON l.client_id = u.id
-      WHERE l.vendeur_id = $1
-      ORDER BY l.created_at DESC`,
+        u.telephone as client_telephone,
+        ci.product_id,
+        p.nom as product_name,
+        p.image_url as product_image,
+        p.dlc as product_dlc,
+        ci.quantite,
+        ci.prix_unitaire,
+        (ci.prix_unitaire * ci.quantite) as line_total,
+        p.pickup_start_time,
+        p.pickup_end_time,
+        p.pickup_instructions
+      FROM commandes c
+      INNER JOIN users u ON c.client_id = u.id
+      JOIN commande_items ci ON c.id = ci.commande_id
+      JOIN products p ON ci.product_id = p.id
+      WHERE c.vendeur_id = $1
+        AND c.stripe_payment_status = 'succeeded'
+      ORDER BY c.created_at DESC`,
       [req.user.id]
     );
 
+    // Grouper les produits par commande
+    const ordersMap = {};
+    for (const row of ordersQuery.rows) {
+      if (!ordersMap[row.commande_id]) {
+        ordersMap[row.commande_id] = {
+          id: row.commande_id,
+          numero_commande: row.numero_commande,
+          total: parseFloat(row.total),
+          statut: row.statut,
+          stripe_payment_status: row.stripe_payment_status,
+          paid_at: row.paid_at,
+          created_at: row.created_at,
+          client: {
+            prenom: row.client_prenom,
+            nom: row.client_nom,
+            email: row.client_email,
+            telephone: row.client_telephone
+          },
+          products: []
+        };
+      }
+
+      ordersMap[row.commande_id].products.push({
+        id: row.product_id,
+        nom: row.product_name,
+        image_url: row.product_image,
+        dlc: row.product_dlc,
+        quantite: row.quantite,
+        prix_unitaire: parseFloat(row.prix_unitaire),
+        line_total: parseFloat(row.line_total),
+        pickup_start_time: row.pickup_start_time,
+        pickup_end_time: row.pickup_end_time,
+        pickup_instructions: row.pickup_instructions
+      });
+    }
+
+    const orders = Object.values(ordersMap);
+
     res.json({
       success: true,
-      orders: result.rows
+      orders: orders
     });
   } catch (error) {
     console.error('Error fetching orders:', error);

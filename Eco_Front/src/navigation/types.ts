@@ -3,6 +3,10 @@ export type RootStackParamList = {
   Splash: undefined;
   Auth: undefined;
   Main: undefined;
+  Payment: {
+    productIds: string[];
+    total: number;
+  };
 };
 
 export type AuthStackParamList = {
@@ -26,6 +30,7 @@ export type ProfileStackParamList = {
   AddProduct: undefined;
   SellerProducts: undefined;
   SellerOrders: undefined;
+  Orders: undefined;
 };
 
 export type HomeStackParamList = {

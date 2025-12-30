@@ -406,7 +406,7 @@ export const searchIngredients = async (query: string) => {
 
 export const getSellerOrders = async () => {
   try {
-    const response = await fetch(`${API_URL}/seller/orders`, {
+    const response = await fetch(`${API_URL}/payment/seller-orders`, {
       method: 'GET',
       headers: await getHeaders(),
     });
@@ -415,7 +415,23 @@ export const getSellerOrders = async () => {
     if (error instanceof Error && error.message === 'Session expirée') {
       throw error;
     }
-    throw new Error('Impossible de récupérer les commandes');
+    throw new Error('Impossible de récupérer les ventes');
+  }
+};
+
+export const updateOrderPickupStatus = async (orderId: string, picked_up: boolean) => {
+  try {
+    const response = await fetch(`${API_URL}/payment/orders/${orderId}/picked-up`, {
+      method: 'PUT',
+      headers: await getHeaders(),
+      body: JSON.stringify({ picked_up }),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de mettre à jour le statut de récupération');
   }
 };
 
@@ -538,5 +554,89 @@ export const getProductsByIngredient = async (ingredientName: string, latitude?:
       throw error;
     }
     throw new Error('Impossible de trouver les produits');
+  }
+};
+
+// ==========================================
+// PAYMENT API
+// ==========================================
+
+export const createPaymentIntent = async (
+  items: Array<{ productId: string; quantity: number }>,
+  total: number
+) => {
+  try {
+    console.log('[API] POST /payment/create-intent - Items:', items, 'Total:', total);
+    const response = await fetch(`${API_URL}/payment/create-intent`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify({
+        items: items,
+        total: total
+      }),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] PaymentIntent created:', data.success ? 'Success' : 'Failed');
+    return data;
+  } catch (error) {
+    console.error('[API] Create payment intent error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de créer le paiement');
+  }
+};
+
+export const confirmPayment = async (paymentIntentId: string) => {
+  try {
+    console.log('[API] POST /payment/confirm - PaymentIntent ID:', paymentIntentId);
+    const response = await fetch(`${API_URL}/payment/confirm`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify({ payment_intent_id: paymentIntentId }),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] Payment confirmed:', data.success ? 'Success' : 'Failed');
+    return data;
+  } catch (error) {
+    console.error('[API] Confirm payment error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de confirmer le paiement');
+  }
+};
+
+export const getMyOrders = async () => {
+  try {
+    console.log('[API] GET /payment/orders');
+    const response = await fetch(`${API_URL}/payment/orders`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] Orders retrieved:', data.orders?.length || 0, 'orders');
+    return data;
+  } catch (error) {
+    console.error('[API] Get orders error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de récupérer vos commandes');
+  }
+};
+
+export const cleanupPendingOrders = async () => {
+  try {
+    console.log('[API] DELETE /payment/cleanup-pending');
+    const response = await fetch(`${API_URL}/payment/cleanup-pending`, {
+      method: 'DELETE',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('[API] Cleanup pending orders error:', error);
+    // Ne pas throw d'erreur pour le nettoyage, c'est optionnel
+    return { success: false };
   }
 };

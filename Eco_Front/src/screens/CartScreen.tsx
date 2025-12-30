@@ -7,11 +7,23 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useCart } from '../contexts/CartContext';
 import { styles } from './CartScreen.styles';
 
+type RootStackParamList = {
+  Payment: {
+    items: Array<{ productId: string; quantity: number }>;
+    total: number;
+  };
+};
+
+type CartScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
 export const CartScreen: React.FC = () => {
-  const { cartItems, removeFromCart, getCartTotal, clearCart } = useCart();
+  const navigation = useNavigation<CartScreenNavigationProp>();
+  const { cartItems, removeFromCart, getCartTotal, clearCart, updateQuantity, getProductQuantity } = useCart();
 
   const handleRemoveItem = (productId: string, productName: string) => {
     Alert.alert(
@@ -29,11 +41,22 @@ export const CartScreen: React.FC = () => {
   };
 
   const handlePay = () => {
-    Alert.alert(
-      'Paiement',
-      'Cette fonctionnalité sera bientôt disponible',
-      [{ text: 'OK' }]
-    );
+    const items = cartItems.map(item => ({
+      productId: item.id,
+      quantity: item.quantity || 1
+    }));
+    const total = getCartTotal();
+
+    if (items.length === 0) {
+      Alert.alert('Panier vide', 'Ajoutez des produits avant de payer');
+      return;
+    }
+
+    console.log('[CartScreen] Navigate to Payment with items:', items, 'Total:', total);
+    navigation.navigate('Payment', {
+      items: items,
+      total: total
+    });
   };
 
   const handleSuggestRecipes = () => {
@@ -52,52 +75,81 @@ export const CartScreen: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const renderCartItem = ({ item }: { item: any }) => (
-    <View style={styles.cartItem}>
-      <View style={styles.itemContent}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.itemImage} />
-        ) : (
-          <View style={styles.noImage}>
-            <Text style={styles.noImageText}>📦</Text>
-          </View>
-        )}
+  const renderCartItem = ({ item }: { item: any }) => {
+    const quantity = item.quantity || 1;
+    const itemTotal = parseFloat(item.prix) * quantity;
 
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemName} numberOfLines={2}>
-            {item.nom}
-          </Text>
-          {item.category_name && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category_name}</Text>
+    return (
+      <View style={styles.cartItem}>
+        <View style={styles.itemContent}>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+          ) : (
+            <View style={styles.noImage}>
+              <Text style={styles.noImageText}>📦</Text>
             </View>
           )}
-          <Text style={styles.itemShop} numberOfLines={1}>
-            {item.nom_commerce}
-          </Text>
-          <Text style={styles.itemDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-          <Text style={styles.itemDlc}>DLC: {formatDate(item.dlc)}</Text>
-        </View>
 
-        <View style={styles.itemRight}>
-          <Text style={styles.itemPrice}>{parseFloat(item.prix).toFixed(2)} €</Text>
-          {item.prix_original && (
-            <Text style={styles.itemOriginalPrice}>
-              {parseFloat(item.prix_original).toFixed(2)} €
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName} numberOfLines={2}>
+              {item.nom}
             </Text>
-          )}
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => handleRemoveItem(item.id, item.nom)}
-          >
-            <Text style={styles.removeButtonText}>✕</Text>
-          </TouchableOpacity>
+            {item.category_name && (
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{item.category_name}</Text>
+              </View>
+            )}
+            <Text style={styles.itemShop} numberOfLines={1}>
+              {item.nom_commerce}
+            </Text>
+            <Text style={styles.itemDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+            <Text style={styles.itemDlc}>DLC: {formatDate(item.dlc)}</Text>
+
+            {/* Quantity Selector */}
+            <View style={styles.quantityContainer}>
+              <Text style={styles.quantityLabel}>Quantité:</Text>
+              <View style={styles.quantitySelector}>
+                <TouchableOpacity
+                  style={[styles.quantityButton, quantity === 1 && styles.quantityButtonDisabled]}
+                  onPress={() => updateQuantity(item.id, quantity - 1)}
+                  disabled={quantity === 1}
+                >
+                  <Text style={styles.quantityButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityValue}>{quantity}</Text>
+                <TouchableOpacity
+                  style={[styles.quantityButton, quantity >= item.stock && styles.quantityButtonDisabled]}
+                  onPress={() => updateQuantity(item.id, quantity + 1)}
+                  disabled={quantity >= item.stock}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.stockInfo}>({item.stock} dispo.)</Text>
+            </View>
+          </View>
+
+          <View style={styles.itemRight}>
+            <Text style={styles.itemPrice}>{itemTotal.toFixed(2)} €</Text>
+            <Text style={styles.unitPrice}>{parseFloat(item.prix).toFixed(2)} € × {quantity}</Text>
+            {item.prix_original && (
+              <Text style={styles.itemOriginalPrice}>
+                {parseFloat(item.prix_original).toFixed(2)} €
+              </Text>
+            )}
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => handleRemoveItem(item.id, item.nom)}
+            >
+              <Text style={styles.removeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (cartItems.length === 0) {
     return (

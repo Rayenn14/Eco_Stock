@@ -17,6 +17,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  logoImage: {
+    width: 48,
+    height: 48,
+    marginRight: 12,
+  },
   logoBox: {
     width: 48,
     height: 48,

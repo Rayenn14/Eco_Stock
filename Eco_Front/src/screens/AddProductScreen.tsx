@@ -55,6 +55,11 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
   const [showIngredientResults, setShowIngredientResults] = useState(false);
   const [isLot, setIsLot] = useState(false);
   const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+  const [pickupStartTime, setPickupStartTime] = useState<Date>(new Date());
+  const [pickupEndTime, setPickupEndTime] = useState<Date>(new Date(Date.now() + 3600000)); // +1h
+  const [showPickupStartPicker, setShowPickupStartPicker] = useState(false);
+  const [showPickupEndPicker, setShowPickupEndPicker] = useState(false);
+  const [pickupInstructions, setPickupInstructions] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -233,6 +238,12 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
     return `${year}-${month}-${day}`;
   };
 
+  const formatTimeForAPI = (date: Date) => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}:00`;
+  };
+
   const validateForm = () => {
     if (!nom.trim()) {
       Alert.alert('Erreur', 'Le nom du produit est obligatoire');
@@ -249,8 +260,8 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       return false;
     }
 
-    if (!stock || isNaN(parseInt(stock)) || parseInt(stock) < 0) {
-      Alert.alert('Erreur', 'Le stock doit être un nombre positif');
+    if (!stock || isNaN(parseInt(stock)) || parseInt(stock) <= 0) {
+      Alert.alert('Erreur', 'Le stock doit être un nombre supérieur à 0.\n\nIndiquez combien de fois ce produit peut être acheté.');
       return false;
     }
 
@@ -297,7 +308,15 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
         category_id: categoryId || undefined,
         is_lot: isLot,
         reserved_for_associations: reservedForAssociations,
-        ingredient_ids: isLot ? selectedIngredients.map(i => i.id) : (selectedIngredient ? [selectedIngredient.id] : undefined),
+        ...(isLot
+          ? { ingredient_ids: selectedIngredients.map(i => i.id) }
+          : selectedIngredient
+            ? { ingredient_id: selectedIngredient.id }
+            : {}
+        ),
+        pickup_start_time: formatTimeForAPI(pickupStartTime),
+        pickup_end_time: formatTimeForAPI(pickupEndTime),
+        pickup_instructions: pickupInstructions.trim() || undefined,
       };
 
       const response = await API.addProduct(productData);
@@ -412,11 +431,12 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
         {/* Stock */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Stock <Text style={styles.required}>*</Text>
+            Stock disponible <Text style={styles.required}>*</Text>
           </Text>
+          <Text style={styles.helpText}>Combien de fois ce produit peut être acheté?</Text>
           <TextInput
             style={styles.input}
-            placeholder="10"
+            placeholder="Ex: 5"
             value={stock}
             onChangeText={setStock}
             keyboardType="number-pad"
@@ -450,6 +470,81 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
               }}
             />
           )}
+        </View>
+
+        {/* Horaires de récupération */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Heure de début de récupération <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowPickupStartPicker(true)}
+            disabled={loading}
+          >
+            <Text style={{ color: '#111827' }}>
+              {pickupStartTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showPickupStartPicker && (
+            <DateTimePicker
+              value={pickupStartTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(event, selectedTime) => {
+                setShowPickupStartPicker(Platform.OS === 'ios');
+                if (selectedTime) {
+                  setPickupStartTime(selectedTime);
+                  // Ajuster automatiquement l'heure de fin si nécessaire
+                  if (selectedTime >= pickupEndTime) {
+                    setPickupEndTime(new Date(selectedTime.getTime() + 3600000));
+                  }
+                }
+              }}
+            />
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Heure de fin de récupération <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowPickupEndPicker(true)}
+            disabled={loading}
+          >
+            <Text style={{ color: '#111827' }}>
+              {pickupEndTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showPickupEndPicker && (
+            <DateTimePicker
+              value={pickupEndTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={pickupStartTime}
+              onChange={(event, selectedTime) => {
+                setShowPickupEndPicker(Platform.OS === 'ios');
+                if (selectedTime) {
+                  setPickupEndTime(selectedTime);
+                }
+              }}
+            />
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Instructions de récupération (optionnel)</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={pickupInstructions}
+            onChangeText={setPickupInstructions}
+            placeholder="Ex: Sonner à l'entrée, demander Marie..."
+            multiline
+            numberOfLines={3}
+            editable={!loading}
+          />
         </View>
 
         {/* Catégorie */}

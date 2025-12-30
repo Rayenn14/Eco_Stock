@@ -204,4 +204,54 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  quantityLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  quantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#166534',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  quantityButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  quantityValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  stockInfo: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  unitPrice: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
 });

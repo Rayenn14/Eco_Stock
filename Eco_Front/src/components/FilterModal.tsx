@@ -217,9 +217,11 @@ export const FilterModal: React.FC<FilterModalProps> = ({
                 <DateTimePicker
                   value={maxDlcDate || new Date()}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
                   onChange={handleDlcDateChange}
                   minimumDate={new Date()}
+                  textColor="#000000"
+                  accentColor="#166534"
                 />
               )}
               {Platform.OS === 'ios' && showDlcPicker && (

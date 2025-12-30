@@ -14,6 +14,7 @@ interface CartProduct {
   stock: number;
   ingredient_nom?: string;
   ingredient_ids?: number[];
+  quantity?: number;
 }
 
 interface CartContextType {
@@ -23,6 +24,8 @@ interface CartContextType {
   clearCart: () => void;
   isInCart: (productId: string) => boolean;
   getCartTotal: () => number;
+  updateQuantity: (productId: string, quantity: number) => void;
+  getProductQuantity: (productId: string) => number;
   cartCount: number;
 }
 
@@ -85,7 +88,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + parseFloat(item.prix), 0);
+    return cartItems.reduce((total, item) => {
+      const quantity = item.quantity || 1;
+      return total + (parseFloat(item.prix) * quantity);
+    }, 0);
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    setCartItems(prevItems =>
+      prevItems.map(item =>
+        item.id === productId
+          ? { ...item, quantity: Math.max(1, Math.min(quantity, item.stock)) }
+          : item
+      )
+    );
+  };
+
+  const getProductQuantity = (productId: string) => {
+    const item = cartItems.find(item => item.id === productId);
+    return item?.quantity || 1;
   };
 
   return (
@@ -97,6 +118,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCart,
         isInCart,
         getCartTotal,
+        updateQuantity,
+        getProductQuantity,
         cartCount: cartItems.length,
       }}
     >

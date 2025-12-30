@@ -8,6 +8,7 @@ import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
 import { AddProductScreen } from '../screens/AddProductScreen';
 import { SellerProductsScreen } from '../screens/SellerProductsScreen';
 import { SellerOrdersScreen } from '../screens/SellerOrdersScreen';
+import { OrdersScreen } from '../screens/OrdersScreen';
 import { Alert } from 'react-native';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
@@ -38,6 +39,10 @@ const ProfileScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParam
       onNavigateSellerOrders={() => {
         console.log('[ProfileScreenWrapper] Navigate to SellerOrders');
         navigation.navigate('SellerOrders');
+      }}
+      onNavigateOrders={() => {
+        console.log('[ProfileScreenWrapper] Navigate to Orders');
+        navigation.navigate('Orders');
       }}
       onNavigateBack={() => {
         console.log('[ProfileScreenWrapper] Navigate back');
@@ -136,6 +141,20 @@ const SellerOrdersScreenWrapper = ({ navigation }: StackScreenProps<ProfileStack
   );
 };
 
+// Wrapper pour OrdersScreen
+const OrdersScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'Orders'>) => {
+  console.log('[OrdersScreenWrapper] Rendering');
+
+  return (
+    <OrdersScreen
+      onNavigateBack={() => {
+        console.log('[OrdersScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+    />
+  );
+};
+
 export const ProfileNavigator = () => {
   console.log('[ProfileNavigator] Rendering Profile stack');
 
@@ -150,7 +169,24 @@ export const ProfileNavigator = () => {
       <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreenWrapper} />
       <Stack.Screen name="AddProduct" component={AddProductScreenWrapper} />
       <Stack.Screen name="SellerProducts" component={SellerProductsScreenWrapper} />
-      <Stack.Screen name="SellerOrders" component={SellerOrdersScreenWrapper} />
+      <Stack.Screen
+        name="SellerOrders"
+        component={SellerOrdersScreenWrapper}
+        options={{
+          headerShown: true,
+          title: 'Mes Ventes',
+          headerBackTitle: 'Retour',
+        }}
+      />
+      <Stack.Screen
+        name="Orders"
+        component={OrdersScreenWrapper}
+        options={{
+          headerShown: true,
+          title: 'Mes Achats',
+          headerBackTitle: 'Retour',
+        }}
+      />
     </Stack.Navigator>
   );
 };

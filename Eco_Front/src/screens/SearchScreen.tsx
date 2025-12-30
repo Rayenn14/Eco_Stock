@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -116,19 +117,11 @@ export const SearchScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoBox}>
-            <View style={styles.cartIcon}>
-              <View style={styles.cartBody} />
-              <View style={styles.cartWheels}>
-                <View style={styles.cartWheel} />
-                <View style={styles.cartWheel} />
-              </View>
-            </View>
-          </View>
-          <View>
-            <Text style={styles.logoText}>ECO STOCK</Text>
-            <Text style={styles.slogan}>Recherchez vos produits</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/EcoStockLogo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </View>
 
