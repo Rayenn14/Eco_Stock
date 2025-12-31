@@ -7,6 +7,9 @@ const { authenticateToken } = require('../middleware/auth');
 router.get('/search', authenticateToken, async (req, res) => {
   try {
     const { query, latitude, longitude } = req.query;
+    const userType = req.user.user_type;
+
+    console.log('[Products] GET /search - user_type:', userType, 'query:', query);
 
     if (!query || query.trim().length < 2) {
       return res.json({
@@ -16,6 +19,13 @@ router.get('/search', authenticateToken, async (req, res) => {
     }
 
     const searchQuery = query.trim();
+
+    // Construire le filtre pour reserved_for_associations
+    const reservedFilter = userType === 'association'
+      ? '' // Les associations voient tout
+      : 'AND (p.reserved_for_associations = false OR p.reserved_for_associations IS NULL)';
+
+    console.log('[Products] Reserved filter:', reservedFilter || 'none (association)');
 
     // Recherche par nom de produit OU ingrédients avec scoring basé sur la position
     const result = await db.query(
@@ -59,6 +69,7 @@ router.get('/search', authenticateToken, async (req, res) => {
         AND p.stock > 0
         AND p.dlc >= CURRENT_DATE
         AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
+        ${reservedFilter}
         AND (
           LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
           OR LOWER(i.name) LIKE '%' || LOWER($1) || '%'
@@ -128,6 +139,9 @@ router.get('/search', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance } = req.query;
+    const userType = req.user.user_type; // 'client', 'vendeur', ou 'association'
+
+    console.log('[Products] GET / - user_type:', userType);
 
     // Build WHERE conditions
     const conditions = [
@@ -136,6 +150,17 @@ router.get('/', authenticateToken, async (req, res) => {
       'p.dlc >= CURRENT_DATE',
       '(p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)'
     ];
+
+    // Filtrer les produits réservés aux associations
+    if (userType === 'association') {
+      // Les associations voient tous les produits (réservés ou non)
+      console.log('[Products] User is association - showing all products');
+    } else {
+      // Les clients ne voient que les produits NON réservés aux associations
+      conditions.push('(p.reserved_for_associations = false OR p.reserved_for_associations IS NULL)');
+      console.log('[Products] User is client/vendeur - hiding reserved products');
+    }
+
     const params = [];
     let paramIndex = 1;
 

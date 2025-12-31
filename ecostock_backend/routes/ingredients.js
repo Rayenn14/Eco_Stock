@@ -42,7 +42,6 @@ router.get('/products/:ingredientName', authenticateToken, async (req, res) => {
       WHERE p.is_disponible = true
         AND p.stock > 0
         AND p.dlc >= CURRENT_DATE
-        AND (p.sold_to_user_id IS NULL)
         AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
         AND LOWER(i.name) = LOWER($1)
       ORDER BY

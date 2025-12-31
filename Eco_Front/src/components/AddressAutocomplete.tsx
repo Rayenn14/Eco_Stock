@@ -156,6 +156,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             )}
             style={styles.suggestionsList}
             keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
           />
         </View>
       )}

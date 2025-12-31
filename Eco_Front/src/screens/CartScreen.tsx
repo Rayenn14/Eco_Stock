@@ -11,11 +11,15 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCart } from '../contexts/CartContext';
 import { styles } from './CartScreen.styles';
+import * as API from '../services/api';
 
 type RootStackParamList = {
   Payment: {
     items: Array<{ productId: string; quantity: number }>;
     total: number;
+  };
+  Recipes: {
+    initialSearchIngredients?: string[];
   };
 };
 
@@ -59,12 +63,67 @@ export const CartScreen: React.FC = () => {
     });
   };
 
-  const handleSuggestRecipes = () => {
-    Alert.alert(
-      'Proposer des recettes',
-      'Cette fonctionnalité sera bientôt disponible',
-      [{ text: 'OK' }]
-    );
+  const handleSuggestRecipes = async () => {
+    try {
+      console.log('[CartScreen] Recherche des ingrédients du panier...');
+      console.log('[CartScreen] Nombre de produits dans le panier:', cartItems.length);
+      const ingredientNames: string[] = [];
+
+      // Pour chaque produit du panier, récupérer ses ingrédients
+      for (const item of cartItems) {
+        try {
+          console.log(`[CartScreen] Récupération du produit ID: ${item.id}, nom: ${item.nom}`);
+          const response = await API.getProductById(item.id);
+          console.log(`[CartScreen] Réponse API complète:`, JSON.stringify(response, null, 2));
+          console.log(`[CartScreen] Produit ${item.nom}, ingredient_nom:`, response.product?.ingredient_nom);
+          console.log(`[CartScreen] ingredient_ids:`, response.product?.ingredient_ids);
+
+          if (response.product?.ingredient_nom) {
+            // Les ingrédients sont stockés comme string séparés par des virgules
+            const ingredients = response.product.ingredient_nom
+              .split(',')
+              .map((ing: string) => ing.trim().toLowerCase());
+
+            console.log(`[CartScreen] Ingrédients parsés pour ${item.nom}:`, ingredients);
+
+            // Ajouter uniquement les nouveaux ingrédients
+            ingredients.forEach((ing: string) => {
+              if (ing && !ingredientNames.includes(ing)) {
+                ingredientNames.push(ing);
+                console.log(`[CartScreen] Ajout ingrédient: ${ing}`);
+              }
+            });
+          } else {
+            console.log(`[CartScreen] AUCUN ingrédient trouvé pour ${item.nom}`);
+          }
+        } catch (error) {
+          console.error(`[CartScreen] Erreur récupération ingrédients pour ${item.nom}:`, error);
+        }
+      }
+
+      console.log('[CartScreen] TOUS les ingrédients trouvés:', ingredientNames);
+
+      if (ingredientNames.length === 0) {
+        Alert.alert(
+          'Aucun ingrédient',
+          'Les produits de votre panier n\'ont pas d\'ingrédients associés. Ajoutez des produits avec des ingrédients pour trouver des recettes.'
+        );
+        return;
+      }
+
+      console.log('[CartScreen] Navigation vers Recipes avec:', ingredientNames);
+      // Naviguer vers RecipesScreen avec les ingrédients
+      // Recipes est un tab qui contient RecipesNavigator > RecipesList
+      (navigation as any).navigate('Recipes', {
+        screen: 'RecipesList',
+        params: {
+          initialSearchIngredients: ingredientNames
+        }
+      });
+    } catch (error) {
+      console.error('[CartScreen] Erreur proposition recettes:', error);
+      Alert.alert('Erreur', 'Impossible de proposer des recettes');
+    }
   };
 
   const formatDate = (dateString: string) => {

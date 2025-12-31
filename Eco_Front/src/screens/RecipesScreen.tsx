@@ -55,13 +55,18 @@ export const RecipesScreen: React.FC = () => {
   const LIMIT = 6;
 
   useEffect(() => {
-    console.log('[RecipesScreen] useEffect - initialSearchIngredients:', initialSearchIngredients);
+    console.log('[RecipesScreen] ========== useEffect CALLED ==========');
+    console.log('[RecipesScreen] route.params:', route.params);
+    console.log('[RecipesScreen] initialSearchIngredients:', initialSearchIngredients);
+    console.log('[RecipesScreen] Type:', typeof initialSearchIngredients);
+    console.log('[RecipesScreen] Is Array?', Array.isArray(initialSearchIngredients));
+    console.log('[RecipesScreen] Length:', initialSearchIngredients?.length);
 
     if (initialSearchIngredients && initialSearchIngredients.length > 0) {
-      console.log('[RecipesScreen] Démarrage recherche avec ingrédients du panier');
+      console.log('[RecipesScreen] ✅ Démarrage recherche avec ingrédients du panier');
       searchByCartIngredients();
     } else {
-      console.log('[RecipesScreen] Chargement recettes normales');
+      console.log('[RecipesScreen] ❌ Chargement recettes normales (pas d\'ingrédients)');
       loadRecipes();
     }
 
