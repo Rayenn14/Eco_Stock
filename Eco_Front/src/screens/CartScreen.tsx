@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCart } from '../contexts/CartContext';
 import { styles } from './CartScreen.styles';
@@ -27,7 +27,53 @@ type CartScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 export const CartScreen: React.FC = () => {
   const navigation = useNavigation<CartScreenNavigationProp>();
-  const { cartItems, removeFromCart, getCartTotal, clearCart, updateQuantity, getProductQuantity } = useCart();
+  const { cartItems, removeFromCart, getCartTotal, clearCart, updateQuantity, getProductQuantity, removeUnavailableProducts } = useCart();
+
+  // Vérifier la disponibilité des produits au chargement et à chaque fois qu'on revient sur l'écran
+  useFocusEffect(
+    React.useCallback(() => {
+      checkProductsAvailability();
+    }, [cartItems])
+  );
+
+  const checkProductsAvailability = async () => {
+    if (cartItems.length === 0) return;
+
+    try {
+      const unavailableProducts: string[] = [];
+      const unavailableNames: string[] = [];
+
+      for (const item of cartItems) {
+        try {
+          const response = await API.getProductById(item.id);
+
+          // Vérifier si le produit est indisponible ou en rupture de stock
+          if (!response.product || !response.product.is_disponible || response.product.stock <= 0) {
+            unavailableProducts.push(item.id);
+            unavailableNames.push(item.nom);
+          }
+        } catch (error) {
+          // Si le produit n'existe plus, le retirer aussi
+          console.error(`[CartScreen] Produit ${item.id} introuvable:`, error);
+          unavailableProducts.push(item.id);
+          unavailableNames.push(item.nom);
+        }
+      }
+
+      // Retirer les produits indisponibles et notifier l'utilisateur
+      if (unavailableProducts.length > 0) {
+        removeUnavailableProducts(unavailableProducts);
+
+        const message = unavailableProducts.length === 1
+          ? `Le produit "${unavailableNames[0]}" n'est plus disponible et a été retiré de votre panier.`
+          : `${unavailableProducts.length} produits ne sont plus disponibles et ont été retirés de votre panier :\n${unavailableNames.map(n => `• ${n}`).join('\n')}`;
+
+        Alert.alert('Produits indisponibles', message);
+      }
+    } catch (error) {
+      console.error('[CartScreen] Erreur vérification disponibilité:', error);
+    }
+  };
 
   const handleRemoveItem = (productId: string, productName: string) => {
     Alert.alert(

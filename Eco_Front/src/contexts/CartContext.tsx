@@ -26,6 +26,7 @@ interface CartContextType {
   getCartTotal: () => number;
   updateQuantity: (productId: string, quantity: number) => void;
   getProductQuantity: (productId: string) => number;
+  removeUnavailableProducts: (unavailableIds: string[]) => void;
   cartCount: number;
 }
 
@@ -109,6 +110,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return item?.quantity || 1;
   };
 
+  const removeUnavailableProducts = (unavailableIds: string[]) => {
+    if (unavailableIds.length > 0) {
+      setCartItems(prevItems => prevItems.filter(item => !unavailableIds.includes(item.id)));
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -120,6 +127,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getCartTotal,
         updateQuantity,
         getProductQuantity,
+        removeUnavailableProducts,
         cartCount: cartItems.length,
       }}
     >
