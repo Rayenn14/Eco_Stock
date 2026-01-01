@@ -26,6 +26,22 @@ export const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
+  ecoTipContainer: {
+    backgroundColor: '#D1FAE5',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  ecoTipText: {
+    fontSize: 13,
+    color: '#065F46',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
   listContent: {
     padding: 16,
   },
