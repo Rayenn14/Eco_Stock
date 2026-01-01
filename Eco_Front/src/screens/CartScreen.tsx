@@ -12,6 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useCart } from '../contexts/CartContext';
 import { styles } from './CartScreen.styles';
 import * as API from '../services/api';
+import { getRandomEcoTip } from '../utils/ecoTips';
 
 type RootStackParamList = {
   Payment: {
@@ -28,10 +29,12 @@ type CartScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 export const CartScreen: React.FC = () => {
   const navigation = useNavigation<CartScreenNavigationProp>();
   const { cartItems, removeFromCart, getCartTotal, clearCart, updateQuantity, getProductQuantity, removeUnavailableProducts } = useCart();
+  const [ecoTip, setEcoTip] = useState('');
 
-  // Vérifier la disponibilité des produits au chargement et à chaque fois qu'on revient sur l'écran
+  // Sélectionner un tip écologique aléatoire au chargement
   useFocusEffect(
     React.useCallback(() => {
+      setEcoTip(getRandomEcoTip());
       checkProductsAvailability();
     }, [cartItems])
   );
@@ -281,6 +284,12 @@ export const CartScreen: React.FC = () => {
           {cartItems.length} {cartItems.length > 1 ? 'articles' : 'article'}
         </Text>
       </View>
+
+      {ecoTip && (
+        <View style={styles.ecoTipContainer}>
+          <Text style={styles.ecoTipText}>{ecoTip}</Text>
+        </View>
+      )}
 
       <FlatList
         data={cartItems}

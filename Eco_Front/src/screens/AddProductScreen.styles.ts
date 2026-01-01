@@ -34,6 +34,20 @@ export const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
+  ecoTipContainer: {
+    backgroundColor: '#D1FAE5',
+    marginBottom: 20,
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  ecoTipText: {
+    fontSize: 13,
+    color: '#065F46',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
   imageContainer: {
     alignItems: 'center',
     marginBottom: 24,

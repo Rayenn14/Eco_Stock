@@ -14,6 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as API from '../services/api';
 import { styles } from './AddProductScreen.styles';
+import { getRandomEcoTip } from '../utils/ecoTips';
 
 interface Category {
   id: number;
@@ -60,9 +61,11 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
   const [showPickupStartPicker, setShowPickupStartPicker] = useState(false);
   const [showPickupEndPicker, setShowPickupEndPicker] = useState(false);
   const [pickupInstructions, setPickupInstructions] = useState('');
+  const [ecoTip, setEcoTip] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    setEcoTip(getRandomEcoTip());
     loadCategories();
   }, []);
 
@@ -355,6 +358,13 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Tip écologique */}
+        {ecoTip && (
+          <View style={styles.ecoTipContainer}>
+            <Text style={styles.ecoTipText}>{ecoTip}</Text>
+          </View>
+        )}
+
         {/* Image */}
         <TouchableOpacity onPress={handlePickImage} style={styles.imageContainer}>
           {imageUrl ? (

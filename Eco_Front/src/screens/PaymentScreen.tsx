@@ -13,6 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as API from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { styles } from './PaymentScreen.styles';
+import { getRandomEcoTip } from '../utils/ecoTips';
 
 type RootStackParamList = {
   Payment: {
@@ -40,8 +41,10 @@ export const PaymentScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [cardFocused, setCardFocused] = useState(false);
+  const [ecoTip, setEcoTip] = useState('');
 
   useEffect(() => {
+    setEcoTip(getRandomEcoTip());
     initializePayment();
   }, []);
 
@@ -169,6 +172,13 @@ export const PaymentScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Tip écologique */}
+        {ecoTip && (
+          <View style={styles.ecoTipContainer}>
+            <Text style={styles.ecoTipText}>{ecoTip}</Text>
+          </View>
+        )}
+
         {/* Carte de résumé de commande */}
         <View style={styles.orderSummaryCard}>
           <View style={styles.orderSummaryHeader}>
@@ -203,8 +213,6 @@ export const PaymentScreen: React.FC = () => {
               postalCodeEnabled={false}
               placeholders={{
                 number: '4242 4242 4242 4242',
-                expiry: 'MM/AA',
-                cvc: 'CVC',
               }}
               cardStyle={{
                 backgroundColor: '#FFFFFF',
