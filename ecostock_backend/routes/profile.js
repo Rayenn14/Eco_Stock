@@ -9,21 +9,18 @@ const { uploadImage, deleteImage } = require('../services/cloudinary');
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-
     const result = await db.query(
       `SELECT id, prenom, nom, email, user_type, nom_commerce, nom_association,
        telephone, adresse, code_postal, ville, photo_profil
        FROM users WHERE id = $1`,
       [userId]
     );
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Utilisateur introuvable',
       });
     }
-
     res.json({
       success: true,
       user: result.rows[0],
@@ -36,7 +33,6 @@ router.get('/', authenticateToken, async (req, res) => {
     });
   }
 });
-
 
 router.put('/', authenticateToken, async (req, res) => {
   try {

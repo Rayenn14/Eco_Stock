@@ -56,11 +56,9 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowSuggestions(false);
       return;
     }
-
     const timer = setTimeout(() => {
       searchAddress(value);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [value]);
 
@@ -80,7 +78,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           },
         }
       );
-
       const data = await response.json();
       setSuggestions(data);
       setShowSuggestions(data.length > 0);
@@ -138,7 +135,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           <Text style={styles.validatedBadge}>✓</Text>
         )}
       </View>
-
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
           <FlatList
@@ -160,7 +156,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           />
         </View>
       )}
-
       {value.length >= 3 && !loading && suggestions.length === 0 && showSuggestions && (
         <View style={styles.noResults}>
           <Text style={styles.noResultsText}>
@@ -168,7 +163,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           </Text>
         </View>
       )}
-
       {!addressValidated && value.length > 0 && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>
