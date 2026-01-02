@@ -11,8 +11,8 @@ export const COLORS = {
   gray600: '#4b5563',
   gray700: '#374151',
   gray800: '#1f2937',
-  error: '#dc2626',
+  error: '#c51d1dff',
   facebook: '#1877F2',
-  google: '#DB4437',
+  google: '#cc4134ff',
   apple: '#000000',
 };
