@@ -6,7 +6,6 @@ const { uploadImage, deleteImage } = require('../services/cloudinary');
 
 
 // RÉCUPÉRER LE PROFIL
-
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
