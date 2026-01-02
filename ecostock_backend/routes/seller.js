@@ -4,7 +4,7 @@ const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { uploadImage, deleteImage } = require('../services/cloudinary');
 
-// Middleware pour vérifier que l'utilisateur est un vendeur
+// Middleware pour vérifier que l'utilisateur soit un vendeur
 const isVendeur = async (req, res, next) => {
   console.log('[Seller Middleware] Checking if user is seller:', req.user.user_type);
   if (req.user.user_type !== 'vendeur') {
@@ -87,7 +87,7 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       pickup_instructions
     } = req.body;
 
-    // Validation
+    // Validation du produit
     if (!nom || !prix || !stock || !dlc) {
       console.log('[Seller] Validation failed - missing required fields');
       return res.status(400).json({
@@ -224,7 +224,7 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
       reserved_for_associations
     } = req.body;
 
-    // Vérifier que le produit appartient au vendeur et récupérer l'ancienne image
+    // Vérifier que le produit appartient au vendeur et récupére l'ancienne image
     const checkResult = await db.query(
       'SELECT id, image_url FROM products WHERE id = $1 AND vendeur_id = $2',
       [productId, req.user.id]
@@ -431,7 +431,7 @@ router.get('/ingredients/search', authenticateToken, async (req, res) => {
   }
 });
 
-// Récupérer les commandes du vendeur
+// Récupérer les commandes du vendeur  
 router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
   try {
     const ordersQuery = await db.query(
@@ -467,7 +467,7 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
       [req.user.id]
     );
 
-    // Grouper les produits par commande
+    // Grouper les produits par commande 
     const ordersMap = {};
     for (const row of ordersQuery.rows) {
       if (!ordersMap[row.commande_id]) {
