@@ -41,15 +41,15 @@ Application mobile permettant aux commerçants de vendre leurs invendus à prix 
 - Validation obligatoire de l'adresse du commerce
 - Récupération automatique des coordonnées GPS (latitude/longitude)
 - Table `commerces` séparée en base de données
-- Modification de l'adresse du commerce dans le profil
+- Modification de l'adresse du commerce dans la modification du profil
 
 ### Interface Utilisateur
 - Écran de démarrage avec logo animé
 - Navigation inférieure avec 5 onglets (Accueil, Recherche, Panier, Recettes, Profil)
 - Design moderne et responsive
-- Messages écologiques aléatoires (20 messages différents)
+- Messages écologiques aléatoires (20 messages différents) pendant le chargement
 - Indicateurs visuels de validation
-- Thème vert cohérent (#166534)
+- Thème vert cohérent et écologique (#166534)
 - Loading states avec messages écologiques
 
 ### Composants Réutilisables
@@ -63,7 +63,7 @@ Application mobile permettant aux commerçants de vendre leurs invendus à prix 
 - Table `users` avec tous les champs profil
 - Table `commerces` avec coordonnées GPS pour les vendeurs
 - Transactions SQL pour garantir l'intégrité
-- Gestion des images en base64
+- Gestion des images en base64 gr^ace à Cloudinary
 
 ### Backend API
 - POST /api/auth/register - Inscription
