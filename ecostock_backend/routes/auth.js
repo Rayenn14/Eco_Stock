@@ -8,10 +8,10 @@ router.post('/register', async (req, res) => {
   try {
     const { prenom, nom, email, password, user_type, nom_commerce, nom_association, adresse_commerce, latitude, longitude } = req.body;
 
-    if (!prenom || !nom || !email || !password || !user_type) {
+    if (!email || !password || !user_type) {
       return res.status(400).json({
         success: false,
-        message: 'Tous les champs sont requis'
+        message: 'L\'email, le mot de passe et le type d\'utilisateur sont requis'
       });
     }
 
@@ -46,7 +46,7 @@ router.post('/register', async (req, res) => {
          (prenom, nom, email, password, user_type, nom_association)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, prenom, nom, email, user_type, nom_association`,
-        [prenom, nom, email, hashedPassword, user_type, nom_association || null]
+        [prenom || null, nom || null, email, hashedPassword, user_type, nom_association || null]
       );
 
       const user = userResult.rows[0];
@@ -180,6 +180,92 @@ router.post('/login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion'
+    });
+  }
+});
+
+// Route pour changer le mot de passe
+router.post('/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token manquant'
+      });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mot de passe actuel et nouveau mot de passe requis'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nouveau mot de passe doit contenir au moins 6 caractères'
+      });
+    }
+
+    // Vérifier et décoder le token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide ou expiré'
+      });
+    }
+
+    // Récupérer l'utilisateur
+    const result = await db.query(
+      'SELECT * FROM users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Vérifier le mot de passe actuel
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mot de passe actuel incorrect'
+      });
+    }
+
+    // Hasher le nouveau mot de passe
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Mettre à jour le mot de passe
+    await db.query(
+      'UPDATE users SET password = $1 WHERE id = $2',
+      [hashedNewPassword, user.id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Mot de passe modifié avec succès'
+    });
+
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du changement de mot de passe'
     });
   }
 });

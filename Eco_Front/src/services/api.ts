@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
-const API_URL = 'http://192.168.1.123:3000/api';
+const API_URL = 'http://192.168.137.1:3000/api';
 
 let onTokenExpired: (() => void) | null = null;
 
@@ -89,8 +89,8 @@ export const login = async (email: string, password: string) => {
 };
 
 export const register = async (data: {
-  prenom: string;
-  nom: string;
+  prenom?: string;
+  nom?: string;
   email: string;
   password: string;
   user_type: 'client' | 'vendeur' | 'association';
@@ -146,8 +146,8 @@ export const getProfile = async () => {
 };
 
 export const updateProfile = async (data: {
-  prenom: string;
-  nom: string;
+  prenom?: string;
+  nom?: string;
   email: string;
   phone?: string;
   nom_commerce?: string;
@@ -191,7 +191,9 @@ export const getProducts = async (
   maxDlcDate?: string,
   maxDistance?: number,
   latitude?: number,
-  longitude?: number
+  longitude?: number,
+  page?: number,
+  limit?: number
 ) => {
   try {
     const params = new URLSearchParams();
@@ -219,6 +221,14 @@ export const getProducts = async (
 
     if (maxDistance !== undefined) {
       params.append('maxDistance', maxDistance.toString());
+    }
+
+    if (page !== undefined) {
+      params.append('page', page.toString());
+    }
+
+    if (limit !== undefined) {
+      params.append('limit', limit.toString());
     }
 
     const url = `${API_URL}/products${params.toString() ? `?${params.toString()}` : ''}`;
@@ -638,5 +648,29 @@ export const cleanupPendingOrders = async () => {
     console.error('[API] Cleanup pending orders error:', error);
     // Ne pas throw d'erreur pour le nettoyage, c'est optionnel
     return { success: false };
+  }
+};
+
+// Fonction pour changer le mot de passe
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  try {
+    console.log('[API] POST /auth/change-password');
+    const response = await fetch(`${API_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    });
+    const data = await handleApiResponse(response);
+    console.log('[API] Password changed:', data.success ? 'Success' : 'Failed');
+    return data;
+  } catch (error) {
+    console.error('[API] Change password error:', error);
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de modifier le mot de passe');
   }
 };

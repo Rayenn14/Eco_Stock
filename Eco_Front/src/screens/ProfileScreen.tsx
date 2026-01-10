@@ -21,6 +21,7 @@ interface ProfileScreenProps {
   onNavigateSellerOrders: () => void;
   onNavigateAddProduct: () => void;
   onNavigateOrders: () => void;
+  onNavigateSettings: () => void;
   onNavigateBack: () => void;
   onLogout: () => void;
 }
@@ -32,6 +33,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateSellerOrders,
   onNavigateAddProduct,
   onNavigateOrders,
+  onNavigateSettings,
   onNavigateBack,
   onLogout,
 }) => {
@@ -270,7 +272,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => Alert.alert('À venir', 'Fonctionnalité en développement')}
+            onPress={onNavigateSettings}
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIcon, { backgroundColor: '#E0E7FF' }]}>
