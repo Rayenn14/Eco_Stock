@@ -134,4 +134,14 @@ export const styles = StyleSheet.create({
   filterIcon: {
     fontSize: 24,
   },
+  loadingMoreContainer: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingMoreText: {
+    marginTop: spacing.sm,
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[600],
+  },
 });

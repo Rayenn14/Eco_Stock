@@ -9,7 +9,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { styles, paymentIconStyles } from './PaymentMethodsScreen.styles';
 import { AppleIcon } from '../components/SocialIcons';
 
@@ -43,7 +43,7 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
 
   const loadPaymentMethods = async () => {
     try {
-      const savedMethods = await AsyncStorage.getItem('paymentMethods');
+      const savedMethods = await SecureStore.getItemAsync('paymentMethods');
       if (savedMethods) {
         setPaymentMethods(JSON.parse(savedMethods));
       }
@@ -138,8 +138,8 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
       const updatedMethods = [...paymentMethods, newMethod];
       setPaymentMethods(updatedMethods);
 
-      // Sauvegarder localement
-      await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+      // Sauvegarder de manière sécurisée
+      await SecureStore.setItemAsync('paymentMethods', JSON.stringify(updatedMethods));
 
       // Réinitialiser le formulaire
       setCardNumber('');
@@ -169,7 +169,7 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
           onPress: async () => {
             const updatedMethods = paymentMethods.filter((m) => m.id !== id);
             setPaymentMethods(updatedMethods);
-            await AsyncStorage.setItem('paymentMethods', JSON.stringify(updatedMethods));
+            await SecureStore.setItemAsync('paymentMethods', JSON.stringify(updatedMethods));
           },
         },
       ]

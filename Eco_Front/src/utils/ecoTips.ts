@@ -1,17 +1,33 @@
-// Tips écologiques aléatoires partagés dans l'application
+/**
+ * Liste des conseils écologiques pour sensibiliser les utilisateurs
+ */
 export const ECO_TIPS = [
-  "En achetant des produits proches de leur DLC, vous réduisez le gaspillage alimentaire !",
-  "Chaque produit sauvé est un pas vers un avenir plus durable.",
-  "Saviez-vous ? 1/3 de la nourriture mondiale est gaspillée chaque année.",
-  "Votre achat aide les commerces locaux à réduire leurs pertes.",
-  "Ensemble, luttons contre le gaspillage alimentaire !",
-  "Les produits anti-gaspi ont le même goût et la même qualité !",
-  "Choisir des produits proches de la DLC, c'est choisir la planète.",
-  "Merci de contribuer à un monde plus responsable !",
-  "Réduire le gaspillage, c'est préserver notre planète pour les générations futures.",
-  "En France, chaque personne jette environ 30kg de nourriture par an.",
+  "Acheter local réduit l'empreinte carbone liée au transport.",
+  "Les produits proches de leur DLC sont aussi nutritifs et sûrs à consommer.",
+  "En France, 10 millions de tonnes de nourriture sont gaspillées chaque année.",
+  "Congeler les aliments avant leur DLC permet de les conserver plusieurs mois.",
+  "Un repas anti-gaspi sauve l'équivalent de 2,5 kg de CO2.",
+  "30% du gaspillage alimentaire se produit au niveau de la distribution.",
+  "Les fruits et légumes \"moches\" ont les mêmes qualités nutritionnelles.",
+  "Planifier ses repas réduit le gaspillage de 25%.",
+  "Chaque ménage français jette en moyenne 29 kg de nourriture par an.",
+  "Les dates de péremption sont souvent indicatives, fiez-vous à vos sens.",
+  "Le compostage transforme les déchets organiques en engrais naturel.",
+  "Les restes peuvent être transformés en délicieuses nouvelles recettes.",
+  "Acheter en vrac réduit les emballages plastiques inutiles.",
+  "Les produits de saison sont plus savoureux et écologiques.",
+  "Conserver correctement ses aliments prolonge leur durée de vie.",
+  "Le gaspillage alimentaire représente 8% des émissions mondiales de gaz à effet de serre.",
+  "Donner aux associations aide les personnes dans le besoin.",
+  "Une pomme jetée a nécessité 70 litres d'eau pour sa production.",
+  "Réutiliser les contenants réduit la production de déchets.",
+  "Les circuits courts favorisent l'économie locale et réduisent la pollution."
 ];
 
+/**
+ * Retourne un conseil écologique aléatoire
+ */
 export const getRandomEcoTip = (): string => {
-  return ECO_TIPS[Math.floor(Math.random() * ECO_TIPS.length)];
+  const randomIndex = Math.floor(Math.random() * ECO_TIPS.length);
+  return ECO_TIPS[randomIndex];
 };

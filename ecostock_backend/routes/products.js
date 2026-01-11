@@ -6,15 +6,28 @@ const { authenticateToken } = require('../middleware/auth');
 // Route de recherche de produits
 router.get('/search', authenticateToken, async (req, res) => {
   try {
-    const { query, latitude, longitude } = req.query;
+    const { query, latitude, longitude, page, limit } = req.query;
     const userType = req.user.user_type;
 
-    console.log('[Products] GET /search - user_type:', userType, 'query:', query);
+    // Pagination parameters
+    const currentPage = parseInt(page) || 1;
+    const pageLimit = parseInt(limit) || 50; // Plus élevé pour la recherche
+    const offset = (currentPage - 1) * pageLimit;
+
+    console.log('[Products] GET /search - user_type:', userType, 'query:', query, 'page:', currentPage);
 
     if (!query || query.trim().length < 2) {
       return res.json({
         success: true,
-        products: []
+        products: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalProducts: 0,
+          limit: pageLimit,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        }
       });
     }
 
@@ -78,9 +91,35 @@ router.get('/search', authenticateToken, async (req, res) => {
         )
       GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY score DESC, p.created_at DESC
-      LIMIT 50`,
+      LIMIT $2 OFFSET $3`,
+      [searchQuery, pageLimit, offset]
+    );
+
+    // Count total (pour pagination)
+    const countResult = await db.query(
+      `SELECT COUNT(DISTINCT p.id) as total
+      FROM products p
+      INNER JOIN users u ON p.vendeur_id = u.id
+      LEFT JOIN commerces c ON u.id = c.vendeur_id
+      LEFT JOIN categories cat ON p.category_id = cat.id
+      LEFT JOIN product_items pi ON p.id = pi.product_id
+      LEFT JOIN ingredients i ON pi.ingredient_id = i.id
+      WHERE p.is_disponible = true
+        AND p.stock > 0
+        AND p.dlc >= CURRENT_DATE
+        AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
+        ${reservedFilter}
+        AND (
+          LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(i.name) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(p.description) LIKE '%' || LOWER($1) || '%'
+          OR LOWER(cat.nom) LIKE '%' || LOWER($1) || '%'
+        )`,
       [searchQuery]
     );
+
+    const totalProducts = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(totalProducts / pageLimit);
 
     let userLat = latitude ? parseFloat(latitude) : null;
     let userLon = longitude ? parseFloat(longitude) : null;
@@ -125,7 +164,15 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      products
+      products,
+      pagination: {
+        currentPage: currentPage,
+        totalPages: totalPages,
+        totalProducts: totalProducts,
+        limit: pageLimit,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
+      }
     });
   } catch (error) {
     console.error('Error searching products:', error);
@@ -138,10 +185,15 @@ router.get('/search', authenticateToken, async (req, res) => {
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance } = req.query;
+    const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance, page, limit } = req.query;
     const userType = req.user.user_type; // 'client', 'vendeur', ou 'association'
 
-    console.log('[Products] GET / - user_type:', userType);
+    // Pagination parameters
+    const currentPage = parseInt(page) || 1;
+    const pageLimit = parseInt(limit) || 20;
+    const offset = (currentPage - 1) * pageLimit;
+
+    console.log('[Products] GET / - user_type:', userType, 'page:', currentPage, 'limit:', pageLimit);
 
     // Build WHERE conditions
     const conditions = [
@@ -186,6 +238,25 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const whereClause = conditions.join(' AND ');
 
+    // Count total products (for pagination metadata)
+    const countResult = await db.query(
+      `SELECT COUNT(DISTINCT p.id) as total
+      FROM products p
+      INNER JOIN users u ON p.vendeur_id = u.id
+      LEFT JOIN commerces c ON u.id = c.vendeur_id
+      WHERE ${whereClause}`,
+      params
+    );
+
+    const totalProducts = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(totalProducts / pageLimit);
+
+    // Add LIMIT and OFFSET to params
+    params.push(pageLimit);
+    const limitParam = paramIndex++;
+    params.push(offset);
+    const offsetParam = paramIndex++;
+
     const result = await db.query(
       `SELECT
         p.id,
@@ -216,7 +287,8 @@ router.get('/', authenticateToken, async (req, res) => {
       LEFT JOIN ingredients i ON pi.ingredient_id = i.id
       WHERE ${whereClause}
       GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
-      ORDER BY p.created_at DESC`,
+      ORDER BY p.created_at DESC
+      LIMIT $${limitParam} OFFSET $${offsetParam}`,
       params
     );
 
@@ -276,7 +348,15 @@ router.get('/', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      products
+      products,
+      pagination: {
+        currentPage: currentPage,
+        totalPages: totalPages,
+        totalProducts: totalProducts,
+        limit: pageLimit,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
+      }
     });
   } catch (error) {
     console.error('Error fetching products:', error);

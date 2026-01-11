@@ -40,8 +40,8 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!prenom || !nom || !email || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+    if (!email || !password) {
+      Alert.alert('Erreur', 'L\'email et le mot de passe sont obligatoires');
       return;
     }
 
@@ -64,8 +64,8 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
 
     try {
       const data = await API.register({
-        prenom,
-        nom,
+        prenom: prenom || undefined,
+        nom: nom || undefined,
         email,
         password,
         user_type: userType,
@@ -77,7 +77,8 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
       });
 
       if (data.success) {
-        Alert.alert('Inscription réussie', `Bienvenue ${prenom} !`);
+        const welcomeMessage = prenom ? `Bienvenue ${prenom} !` : 'Bienvenue !';
+        Alert.alert('Inscription réussie', welcomeMessage);
 
         // Le token et l'utilisateur seront sauvegardés de manière sécurisée par handleAuthSuccess dans App.tsx
         onSignupSuccess(data.token, data.user);
@@ -155,7 +156,7 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Prénom *</Text>
+            <Text style={styles.label}>Prénom (optionnel)</Text>
             <TextInput
               style={styles.input}
               placeholder="Prénom"
@@ -168,7 +169,7 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({
 
           {/* Nom */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom *</Text>
+            <Text style={styles.label}>Nom (optionnel)</Text>
             <TextInput
               style={styles.input}
               placeholder="Nom"

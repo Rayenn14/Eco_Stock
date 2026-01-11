@@ -46,8 +46,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [filters, setFilters] = useState({
     category: undefined as string | undefined,
     minPrice: undefined as number | undefined,
@@ -88,8 +91,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     }
   };
 
-  const loadProducts = async () => {
+  const loadProducts = async (page: number = 1, append: boolean = false) => {
+    if (loadingMore && append) return; // Éviter les appels multiples
+
     try {
+      if (append) {
+        setLoadingMore(true);
+      }
+
       const response = await API.getProducts(
         filters.category,
         filters.minPrice,
@@ -97,7 +106,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
         filters.maxDlcDate,
         filters.maxDistance,
         userLocation?.latitude,
-        userLocation?.longitude
+        userLocation?.longitude,
+        page,
+        20 // limit
       );
 
       if (response.success) {
@@ -123,7 +134,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
           });
         }
 
-        setProducts(sortedProducts);
+        // Ajouter ou remplacer les produits
+        if (append) {
+          setProducts(prev => [...prev, ...sortedProducts]);
+        } else {
+          setProducts(sortedProducts);
+        }
+
+        // Vérifier s'il y a plus de produits
+        setHasMore(response.pagination?.hasNextPage || false);
+        setCurrentPage(page);
+
       } else {
         Alert.alert('Erreur', response.message || 'Impossible de charger les produits');
       }
@@ -134,6 +155,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (hasMore && !loadingMore && !loading) {
+      loadProducts(currentPage + 1, true);
     }
   };
 
@@ -141,6 +169,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     setFilters(newFilters);
     setShowFilterModal(false);
     setLoading(true);
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   const handleResetFilters = () => {
@@ -154,11 +184,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
     });
     setShowFilterModal(false);
     setLoading(true);
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadProducts();
+    setCurrentPage(1);
+    setHasMore(true);
+    loadProducts(1, false);
   };
 
   if (loading) {
@@ -214,6 +248,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
             colors={['#166534']}
             tintColor="#166534"
           />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.loadingMoreContainer}>
+              <ActivityIndicator size="small" color="#166534" />
+              <Text style={styles.loadingMoreText}>Chargement...</Text>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

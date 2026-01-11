@@ -300,7 +300,7 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
     setLoading(true);
 
     try {
-      const productData = {
+      const productData: any = {
         nom: nom.trim(),
         description: description.trim() || undefined,
         prix: parseFloat(prix),
@@ -443,7 +443,7 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
           <Text style={styles.label}>
             Stock disponible <Text style={styles.required}>*</Text>
           </Text>
-          <Text style={styles.helpText}>Combien de fois ce produit peut être acheté?</Text>
+          <Text style={styles.helperText}>Combien de fois ce produit peut être acheté?</Text>
           <TextInput
             style={styles.input}
             placeholder="Ex: 5"

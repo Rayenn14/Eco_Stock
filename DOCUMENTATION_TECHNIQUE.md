@@ -2797,10 +2797,10 @@ const distance = calculateDistance(
 ✅ Tests géolocalisation (simulateur + device)
 
 **Tests automatisés implémentés:**
-✅ **89 tests unitaires Jest** (100% de réussite)
-- **Utils tests:** Validations formulaires, ecoTips, helpers panier
+✅ **167 tests unitaires Jest** (100% de réussite)
+- **Utils tests:** Validations formulaires, ecoTips, helpers panier, recettes, géolocalisation, authentification
 - **Services tests:** Logique API (pagination, URL construction, formatage)
-- **Business logic:** Calculs prix, stock, économies, filtres
+- **Business logic:** Calculs prix, stock, économies, filtres, distance, matching recettes
 - **Configuration:** ts-jest avec TypeScript
 
 **Structure des tests:**
@@ -2811,9 +2811,13 @@ Eco_Front/
       - validations.test.ts (32 tests - validations formulaires)
       - ecoTips.test.ts (9 tests - conseils écologiques)
       - cart-helpers.test.ts (26 tests - logique panier)
+      - recipes-helpers.test.ts (22 tests - filtrage & matching recettes)
+      - geolocation-helpers.test.ts (20 tests - calculs distance Haversine)
+      - auth-helpers.test.ts (24 tests - JWT, passwords, sessions)
     services/
       - api.test.ts (5 tests - calculs & distance)
       - api-functions.test.ts (17 tests - API & formatage)
+      - pagination.test.ts (25 tests - pagination & infinite scroll)
   jest.config.js
   jest.setup.simple.js
 ```
@@ -2822,20 +2826,77 @@ Eco_Front/
 - ✅ Validation des entrées utilisateur (email, téléphone, mot de passe, prix, stock)
 - ✅ Calculs financiers (totaux, réductions, économies)
 - ✅ Gestion du stock et quantités
-- ✅ Filtres et recherche (prix, DLC, disponibilité)
+- ✅ Filtres et recherche (prix, DLC, disponibilité, recettes)
 - ✅ Formatage des données (dates, prix, URL)
 - ✅ Logique métier du panier
 - ✅ Conseils écologiques
+- ✅ Matching et scoring des recettes par ingrédients
+- ✅ Calculs de distance géographique (formule de Haversine)
+- ✅ Tri des commerces par proximité
+- ✅ Validation JWT et gestion de sessions
+- ✅ Validation des mots de passe (force, confirmation)
+- ✅ Pagination (métadonnées, offset, navigation)
+- ✅ Infinite scroll (déclenchement, prévention duplicatas)
 
-**Commandes de test:**
+**Commandes de test Frontend:**
 ```bash
+cd Eco_Front
 npm test              # Lancer tous les tests
 npm test:watch        # Mode watch
 npm test:coverage     # Rapport de couverture
 ```
 
+**Commandes de test Backend:**
+```bash
+cd ecostock_backend
+npm test              # Lancer tous les tests
+npm test:watch        # Mode watch
+npm test:coverage     # Rapport de couverture
+```
+
+---
+
+### 14.2 Tests Backend (83 tests)
+
+**Tests automatisés implémentés:**
+✅ **83 tests unitaires Jest** (100% de réussite)
+- **Routes d'authentification:** 41 tests (register, login, change-password)
+- **Middleware d'authentification:** 29 tests (validation JWT, sécurité)
+- **Logique métier:** 13 tests (prix, stock, disponibilité, calculs)
+
+**Structure des tests:**
+```
+ecostock_backend/
+  __tests__/
+    routes/
+      - auth.test.js (41 tests - register, login, change-password)
+    middleware/
+      - auth.test.js (29 tests - JWT validation, security)
+    utils/
+      - business-logic.test.js (13 tests - business rules)
+  jest.config.js
+```
+
+**Couverture des tests backend:**
+- ✅ Inscription (acheteur, vendeur, association)
+- ✅ Validation des données d'inscription (email unique, champs requis)
+- ✅ Connexion avec credentials
+- ✅ Gestion des comptes inactifs
+- ✅ Changement de mot de passe sécurisé
+- ✅ Validation JWT (tokens valides, expirés, invalides)
+- ✅ Vérification signature JWT
+- ✅ Hachage bcrypt des mots de passe
+- ✅ Requêtes base de données (utilisateurs actifs uniquement)
+- ✅ Calculs de prix et réductions
+- ✅ Gestion du stock (disponibilité, out of stock)
+- ✅ Validation des dates de péremption (DLC)
+- ✅ Pagination (offset, total pages, navigation)
+- ✅ Calculs de commandes (totaux, économies)
+- ✅ Filtres et recherche
+- ✅ Calculs de distance géographique
+
 **Tests à implémenter:**
-- **Integration tests:** Tests API avec supertest
+- **Integration tests:** Tests complets des routes API
 - **E2E tests:** Detox pour React Native
 - **Component tests:** Tests des composants React avec React Testing Library
 

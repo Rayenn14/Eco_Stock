@@ -87,8 +87,8 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
   };
 
   const handleSave = async () => {
-    if (!prenom.trim() || !nom.trim() || !email.trim()) {
-      Alert.alert('Erreur', 'Le prénom, nom et email sont obligatoires');
+    if (!email.trim()) {
+      Alert.alert('Erreur', 'L\'email est obligatoire');
       return;
     }
 
@@ -126,8 +126,8 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
 
     try {
       const profileData = {
-        prenom: prenom.trim(),
-        nom: nom.trim(),
+        prenom: prenom.trim() || undefined,
+        nom: nom.trim() || undefined,
         email: email.trim(),
         phone: phone.trim() || undefined,
         nom_commerce: userType === 'vendeur' ? nomCommerce.trim() : undefined,
@@ -200,7 +200,7 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
 
           {/* Prénom */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Prénom *</Text>
+            <Text style={styles.label}>Prénom (optionnel)</Text>
             <TextInput
               style={styles.input}
               placeholder="Prénom"
@@ -213,7 +213,7 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
 
           {/* Nom */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom *</Text>
+            <Text style={styles.label}>Nom (optionnel)</Text>
             <TextInput
               style={styles.input}
               placeholder="Nom"
