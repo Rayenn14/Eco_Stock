@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { styles } from './RecipeDetailScreen.styles';
@@ -168,6 +169,18 @@ export const RecipeDetailScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
+      {recipe.image_name && recipe.image_name.startsWith('http') ? (
+        <Image
+          source={{ uri: recipe.image_name }}
+          style={styles.recipeImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.imagePlaceholderWhite}>
+          <Text style={styles.imagePlaceholderIcon}>🍽️</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <Text style={styles.title}>{recipe.title}</Text>
         {recipe.category && (

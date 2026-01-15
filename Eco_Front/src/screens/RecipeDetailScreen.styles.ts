@@ -5,6 +5,20 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F0FDF4',
   },
+  recipeImage: {
+    width: '100%',
+    height: 220,
+  },
+  imagePlaceholderWhite: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePlaceholderIcon: {
+    fontSize: 80,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

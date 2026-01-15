@@ -338,13 +338,14 @@ export const RecipesScreen: React.FC = () => {
       onPress={() => handleRecipePress(item.id)}
       activeOpacity={0.7}
     >
-      {item.image_name ? (
-        <View style={styles.imagePlaceholder}>
-          <Text style={styles.imagePlaceholderText}>📸</Text>
-          <Text style={styles.imageNameText}>{item.image_name}</Text>
-        </View>
+      {item.image_name && item.image_name.startsWith('http') ? (
+        <Image
+          source={{ uri: item.image_name }}
+          style={styles.recipeImage}
+          resizeMode="cover"
+        />
       ) : (
-        <View style={styles.imagePlaceholder}>
+        <View style={styles.imagePlaceholderWhite}>
           <Text style={styles.imagePlaceholderIcon}>🍽️</Text>
         </View>
       )}

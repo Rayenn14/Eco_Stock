@@ -85,12 +85,25 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  recipeImage: {
+    width: '100%',
+    height: 150,
+  },
   imagePlaceholder: {
     width: '100%',
     height: 150,
     backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  imagePlaceholderWhite: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   imagePlaceholderIcon: {
     fontSize: 64,
