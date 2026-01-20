@@ -81,7 +81,7 @@ router.get('/search', authenticateToken, async (req, res) => {
       WHERE p.is_disponible = true
         AND p.stock > 0
         AND p.dlc >= CURRENT_DATE
-        AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
+        AND (p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())
         ${reservedFilter}
         AND (
           LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
@@ -107,7 +107,7 @@ router.get('/search', authenticateToken, async (req, res) => {
       WHERE p.is_disponible = true
         AND p.stock > 0
         AND p.dlc >= CURRENT_DATE
-        AND (p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)
+        AND (p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())
         ${reservedFilter}
         AND (
           LOWER(p.nom) LIKE '%' || LOWER($1) || '%'
@@ -200,7 +200,7 @@ router.get('/', authenticateToken, async (req, res) => {
       'p.is_disponible = true',
       'p.stock > 0',
       'p.dlc >= CURRENT_DATE',
-      '(p.pickup_end_time IS NULL OR p.pickup_end_time >= CURRENT_TIME)'
+      '(p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())'
     ];
 
     // Filtrer les produits réservés aux associations

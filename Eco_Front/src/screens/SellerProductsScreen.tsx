@@ -50,7 +50,11 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
     try {
       const response = await API.getSellerProducts();
       if (response.success) {
-        setProducts(response.products);
+        // Filtrer pour n'afficher que les produits disponibles
+        const availableProducts = response.products.filter(
+          (product: Product) => product.is_disponible
+        );
+        setProducts(availableProducts);
       }
     } catch (error: any) {
       if (error.message !== 'Session expirée') {
@@ -65,27 +69,6 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
   const onRefresh = () => {
     setRefreshing(true);
     loadProducts();
-  };
-
-  const handleToggleAvailability = async (productId: string, currentStatus: boolean) => {
-    try {
-      const newStatus = !currentStatus;
-      const response = await API.updateProduct(productId, {
-        is_disponible: newStatus,
-      });
-
-      if (response.success) {
-        Alert.alert(
-          'Succès',
-          newStatus ? 'Produit mis en ligne' : 'Produit retiré de la vente'
-        );
-        loadProducts();
-      } else {
-        Alert.alert('Erreur', response.message);
-      }
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message);
-    }
   };
 
   const handleDeleteProduct = (productId: string, productName: string) => {
@@ -191,25 +174,6 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
 
         {/* Actions */}
         <View style={styles.productActions}>
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              product.is_disponible ? styles.actionButtonActive : styles.actionButtonInactive,
-            ]}
-            onPress={() => handleToggleAvailability(product.id, product.is_disponible)}
-          >
-            <Text
-              style={[
-                styles.actionButtonText,
-                product.is_disponible
-                  ? styles.actionButtonTextActive
-                  : styles.actionButtonTextInactive,
-              ]}
-            >
-              {product.is_disponible ? 'En ligne' : 'Hors ligne'}
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDeleteProduct(product.id, product.nom)}
