@@ -159,7 +159,6 @@ export const RecipesScreen: React.FC = () => {
       if (response.success) {
         setRecipes(response.recipes);
         setHasMore(false);
-        setSearchQuery(ingredientNames.join(', '));
       }
     } catch (error: any) {
       console.error('Erreur recherche recettes par ingrédients:', error);

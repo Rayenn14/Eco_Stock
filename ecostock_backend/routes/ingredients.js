@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const checkExpiredProducts = require('../middleware/checkExpiredProducts');
+
+// Vérifier les produits expirés avant chaque requête
+router.use(checkExpiredProducts);
 
 // GET /ingredients/products/:ingredientName - Trouver les produits contenant un ingrédient
 router.get('/products/:ingredientName', authenticateToken, async (req, res) => {

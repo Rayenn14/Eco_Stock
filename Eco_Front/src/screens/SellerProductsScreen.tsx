@@ -25,7 +25,7 @@ interface Product {
   is_disponible: boolean;
   reserved_for_associations: boolean;
   category_name: string | null;
-  status: 'active' | 'expiring_soon' | 'expired';
+  status: 'active' | 'expiring_soon' | 'expired' | 'unavailable';
   created_at: string;
 }
 
@@ -41,20 +41,17 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showExpired, setShowExpired] = useState(false);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [showExpired]);
 
   const loadProducts = async () => {
     try {
-      const response = await API.getSellerProducts();
+      const response = await API.getSellerProducts(showExpired);
       if (response.success) {
-        // Filtrer pour n'afficher que les produits disponibles
-        const availableProducts = response.products.filter(
-          (product: Product) => product.is_disponible
-        );
-        setProducts(availableProducts);
+        setProducts(response.products);
       }
     } catch (error: any) {
       if (error.message !== 'Session expirée') {
@@ -109,9 +106,11 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'expired':
-        return { text: 'Expiré', color: '#DC2626', bgColor: '#FEE2E2' };
+        return { text: 'Expire', color: '#DC2626', bgColor: '#FEE2E2' };
+      case 'unavailable':
+        return { text: 'Indisponible', color: '#6B7280', bgColor: '#F3F4F6' };
       case 'expiring_soon':
-        return { text: 'Expire bientôt', color: '#D97706', bgColor: '#FEF3C7' };
+        return { text: 'Expire bientot', color: '#D97706', bgColor: '#FEF3C7' };
       default:
         return { text: 'Actif', color: '#059669', bgColor: '#D1FAE5' };
     }
@@ -212,6 +211,25 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
         <Text style={styles.headerTitle}>Mes produits</Text>
         <TouchableOpacity onPress={onNavigateAddProduct} style={styles.addButton}>
           <Text style={styles.addIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            showExpired && styles.filterButtonActive,
+          ]}
+          onPress={() => setShowExpired(!showExpired)}
+        >
+          <Text
+            style={[
+              styles.filterButtonText,
+              showExpired && styles.filterButtonTextActive,
+            ]}
+          >
+            {showExpired ? 'Masquer expires' : 'Voir expires'}
+          </Text>
         </TouchableOpacity>
       </View>
 

@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
-const API_URL = 'http://192.168.137.1:3000/api';
+const API_URL = 'https://unimpeachably-obliging-eveline.ngrok-free.dev/api';
 
 let onTokenExpired: (() => void) | null = null;
 
@@ -288,9 +288,10 @@ export const getProductById = async (productId: string, latitude?: number, longi
 
 // ===== SELLER API =====
 
-export const getSellerProducts = async () => {
+export const getSellerProducts = async (showExpired: boolean = false) => {
   try {
-    const response = await fetch(`${API_URL}/seller/my-products`, {
+    const url = `${API_URL}/seller/my-products?showExpired=${showExpired}`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: await getHeaders(),
     });

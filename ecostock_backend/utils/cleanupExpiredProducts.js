@@ -38,6 +38,36 @@ async function cleanupExpiredProducts() {
 }
 
 /**
+ * Marque comme indisponibles les produits dont le pickup_end_time est dépassé
+ * Vérifie si (created_at::date + pickup_end_time) < NOW()
+ */
+async function markExpiredByPickupTime() {
+  try {
+    const result = await db.query(
+      `UPDATE products
+       SET is_disponible = false, updated_at = NOW()
+       WHERE is_disponible = true
+         AND pickup_end_time IS NOT NULL
+         AND (created_at::date + pickup_end_time) < NOW()
+       RETURNING id, nom, pickup_end_time, created_at`
+    );
+
+    if (result.rows.length > 0) {
+      console.log(`[CLEANUP] ${result.rows.length} produit(s) expiré(s) par pickup_end_time`);
+    }
+
+    return {
+      success: true,
+      updatedCount: result.rows.length,
+      updatedProducts: result.rows
+    };
+  } catch (error) {
+    console.error('[CLEANUP] Erreur markExpiredByPickupTime:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Marque comme indisponibles les produits dont le stock est à 0
  */
 async function markOutOfStockProducts() {
@@ -84,16 +114,19 @@ async function runCleanup() {
   console.log('========================================\n');
 
   const expiredResult = await cleanupExpiredProducts();
+  const pickupResult = await markExpiredByPickupTime();
   const stockResult = await markOutOfStockProducts();
 
   console.log('\n========================================');
   console.log('RÉSUMÉ DU NETTOYAGE');
-  console.log(`Produits expirés supprimés: ${expiredResult.deletedCount || 0}`);
-  console.log(`Produits marqués indisponibles: ${stockResult.updatedCount || 0}`);
+  console.log(`Produits expirés (DLC) supprimés: ${expiredResult.deletedCount || 0}`);
+  console.log(`Produits expirés (pickup_end_time): ${pickupResult.updatedCount || 0}`);
+  console.log(`Produits marqués indisponibles (stock): ${stockResult.updatedCount || 0}`);
   console.log('========================================\n');
 
   return {
     expired: expiredResult,
+    pickup: pickupResult,
     stock: stockResult
   };
 }
@@ -113,6 +146,7 @@ if (require.main === module) {
 
 module.exports = {
   cleanupExpiredProducts,
+  markExpiredByPickupTime,
   markOutOfStockProducts,
   runCleanup
 };

@@ -3,6 +3,10 @@ const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { uploadImage, deleteImage } = require('../services/cloudinary');
+const checkExpiredProducts = require('../middleware/checkExpiredProducts');
+
+// Vérifier les produits expirés avant chaque requête
+router.use(checkExpiredProducts);
 
 // Middleware pour vérifier que l'utilisateur soit un vendeur
 const isVendeur = async (req, res, next) => {
@@ -21,7 +25,18 @@ const isVendeur = async (req, res, next) => {
 // Récupérer tous les produits du vendeur connecté
 router.get('/my-products', authenticateToken, isVendeur, async (req, res) => {
   try {
-    console.log('[Seller] GET /my-products - Fetching products for seller:', req.user.id);
+    const { showExpired } = req.query;
+    const includeExpired = showExpired === 'true';
+
+    console.log('[Seller] GET /my-products - Fetching products for seller:', req.user.id, 'showExpired:', includeExpired);
+
+    // Filtre pour exclure les produits expirés (par défaut)
+    const expirationFilter = includeExpired
+      ? ''
+      : `AND p.is_disponible = true
+         AND p.dlc >= CURRENT_DATE
+         AND (p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())`;
+
     const result = await db.query(
       `SELECT
         p.id,
@@ -39,12 +54,15 @@ router.get('/my-products', authenticateToken, isVendeur, async (req, res) => {
         cat.nom as category_name,
         CASE
           WHEN p.dlc < CURRENT_DATE THEN 'expired'
+          WHEN (p.pickup_end_time IS NOT NULL AND (p.created_at::date + p.pickup_end_time) < NOW()) THEN 'expired'
+          WHEN p.is_disponible = false THEN 'unavailable'
           WHEN p.dlc <= CURRENT_DATE + INTERVAL '3 days' THEN 'expiring_soon'
           ELSE 'active'
         END as status
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
       WHERE p.vendeur_id = $1
+      ${expirationFilter}
       ORDER BY p.created_at DESC`,
       [req.user.id]
     );
