@@ -306,11 +306,11 @@ export const CartScreen: React.FC = () => {
 
         <View style={styles.buttonsContainer}>
           <TouchableOpacity style={styles.recipesButton} onPress={handleSuggestRecipes}>
-            <Text style={styles.recipesButtonText}>📖 Proposer des recettes avec votre panier</Text>
+            <Text style={styles.recipesButtonText}>Proposer des recettes avec votre panier</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.payButton} onPress={handlePay}>
-            <Text style={styles.payButtonText}>💳 Payer</Text>
+            <Text style={styles.payButtonText}>Payer</Text>
           </TouchableOpacity>
         </View>
       </View>

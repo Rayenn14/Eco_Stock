@@ -58,6 +58,7 @@ router.get('/search', authenticateToken, async (req, res) => {
         p.is_disponible,
         p.is_lot,
         p.created_at,
+        c.id as commerce_id,
         c.nom_commerce,
         c.adresse,
         c.latitude,
@@ -65,6 +66,8 @@ router.get('/search', authenticateToken, async (req, res) => {
         cat.nom as category_name,
         u.prenom as vendeur_prenom,
         u.nom as vendeur_nom,
+        (SELECT ROUND(AVG(r.note)::numeric, 1) FROM reviews r WHERE r.commerce_id = c.id) as commerce_rating,
+        (SELECT COUNT(*) FROM reviews r WHERE r.commerce_id = c.id) as commerce_reviews_count,
         STRING_AGG(DISTINCT i.name, ', ') as ingredient_nom,
         ARRAY_AGG(DISTINCT i.id) FILTER (WHERE i.id IS NOT NULL) as ingredient_ids,
         CASE
@@ -93,7 +96,7 @@ router.get('/search', authenticateToken, async (req, res) => {
           OR LOWER(p.description) LIKE '%' || LOWER($1) || '%'
           OR LOWER(cat.nom) LIKE '%' || LOWER($1) || '%'
         )
-      GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
+      GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY score DESC, p.created_at DESC
       LIMIT $2 OFFSET $3`,
       [searchQuery, pageLimit, offset]
@@ -274,6 +277,7 @@ router.get('/', authenticateToken, async (req, res) => {
         p.is_disponible,
         p.is_lot,
         p.created_at,
+        c.id as commerce_id,
         c.nom_commerce,
         c.adresse,
         c.latitude,
@@ -281,6 +285,8 @@ router.get('/', authenticateToken, async (req, res) => {
         cat.nom as category_name,
         u.prenom as vendeur_prenom,
         u.nom as vendeur_nom,
+        (SELECT ROUND(AVG(r.note)::numeric, 1) FROM reviews r WHERE r.commerce_id = c.id) as commerce_rating,
+        (SELECT COUNT(*) FROM reviews r WHERE r.commerce_id = c.id) as commerce_reviews_count,
         STRING_AGG(DISTINCT i.name, ', ') as ingredient_nom,
         ARRAY_AGG(DISTINCT i.id) FILTER (WHERE i.id IS NOT NULL) as ingredient_ids
       FROM products p
@@ -290,7 +296,7 @@ router.get('/', authenticateToken, async (req, res) => {
       LEFT JOIN product_items pi ON p.id = pi.product_id
       LEFT JOIN ingredients i ON pi.ingredient_id = i.id
       WHERE ${whereClause}
-      GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
+      GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY p.created_at DESC
       LIMIT $${limitParam} OFFSET $${offsetParam}`,
       params
@@ -392,6 +398,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         p.pickup_start_time,
         p.pickup_end_time,
         p.pickup_instructions,
+        c.id as commerce_id,
         c.nom_commerce,
         c.adresse,
         c.latitude,
@@ -399,6 +406,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
         cat.nom as category_name,
         u.prenom as vendeur_prenom,
         u.nom as vendeur_nom,
+        (SELECT ROUND(AVG(r.note)::numeric, 1) FROM reviews r WHERE r.commerce_id = c.id) as commerce_rating,
+        (SELECT COUNT(*) FROM reviews r WHERE r.commerce_id = c.id) as commerce_reviews_count,
         STRING_AGG(DISTINCT i.name, ', ') as ingredient_nom,
         ARRAY_AGG(DISTINCT i.id) FILTER (WHERE i.id IS NOT NULL) as ingredient_ids
       FROM products p
@@ -408,7 +417,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       LEFT JOIN product_items pi ON p.id = pi.product_id
       LEFT JOIN ingredients i ON pi.ingredient_id = i.id
       WHERE p.id = $1
-      GROUP BY p.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom`,
+      GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom`,
       [productId]
     );
 

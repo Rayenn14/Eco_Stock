@@ -675,3 +675,98 @@ export const changePassword = async (currentPassword: string, newPassword: strin
     throw new Error('Impossible de modifier le mot de passe');
   }
 };
+
+// ==========================================
+// REVIEWS API
+// ==========================================
+
+export const addOrUpdateReview = async (commerce_id: string, note: number, commentaire?: string) => {
+  try {
+    const response = await fetch(`${API_URL}/reviews`, {
+      method: 'POST',
+      headers: await getHeaders(),
+      body: JSON.stringify({ commerce_id, note, commentaire }),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible d\'enregistrer l\'avis');
+  }
+};
+
+export const getCommerceReviews = async (commerceId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/commerce/${commerceId}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de recuperer les avis');
+  }
+};
+
+export const getMyReviews = async () => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/my-reviews`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de recuperer vos avis');
+  }
+};
+
+export const getShopReviews = async () => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/shop-reviews`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de recuperer les avis de votre boutique');
+  }
+};
+
+export const deleteReview = async (reviewId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de supprimer l\'avis');
+  }
+};
+
+export const checkUserReview = async (commerceId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/check/${commerceId}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expirée') {
+      throw error;
+    }
+    throw new Error('Impossible de verifier l\'avis');
+  }
+};

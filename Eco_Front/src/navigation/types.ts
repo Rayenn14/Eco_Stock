@@ -32,6 +32,8 @@ export type ProfileStackParamList = {
   SellerOrders: undefined;
   Orders: undefined;
   Settings: undefined;
+  MyReviews: undefined;
+  ShopReviews: undefined;
 };
 
 export type HomeStackParamList = {

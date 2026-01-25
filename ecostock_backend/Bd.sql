@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict aaMlLF4geivn1hLOS1O0BEDLInpv8lxyFnK6uiC9Xx7cglgQuLFiUhY5bguxs3o
+\restrict Ld24cYknirEfjPDmJTcTpMoNouhSzG0avYgZSHZZ6nnQIjCH1e4RzNOvViPuS4T
 
--- Dumped from database version 18.0
--- Dumped by pg_dump version 18.0
+-- Dumped from database version 18.1
+-- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -25,16 +25,16 @@ SET row_security = off;
 
 CREATE FUNCTION public.check_product_expiration_on_change() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN
-    -- Si pickup_end_time est d‚fini, v‚rifier si d‚j… expir‚
-    IF NEW.pickup_end_time IS NOT NULL THEN
-        IF (NEW.created_at::date + NEW.pickup_end_time) < NOW() THEN
-            NEW.is_disponible := false;
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
+    AS $$
+BEGIN
+    -- Si pickup_end_time est d‚fini, v‚rifier si d‚j… expir‚
+    IF NEW.pickup_end_time IS NOT NULL THEN
+        IF (NEW.created_at::date + NEW.pickup_end_time) < NOW() THEN
+            NEW.is_disponible := false;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -46,19 +46,19 @@ ALTER FUNCTION public.check_product_expiration_on_change() OWNER TO postgres;
 
 CREATE FUNCTION public.expire_old_products() RETURNS integer
     LANGUAGE plpgsql
-    AS $$
-DECLARE
-    updated_count INTEGER;
-BEGIN
-    UPDATE products
-    SET is_disponible = false, updated_at = NOW()
-    WHERE is_disponible = true
-      AND pickup_end_time IS NOT NULL
-      AND (created_at::date + pickup_end_time) < NOW();
-
-    GET DIAGNOSTICS updated_count = ROW_COUNT;
-    RETURN updated_count;
-END;
+    AS $$
+DECLARE
+    updated_count INTEGER;
+BEGIN
+    UPDATE products
+    SET is_disponible = false, updated_at = NOW()
+    WHERE is_disponible = true
+      AND pickup_end_time IS NOT NULL
+      AND (created_at::date + pickup_end_time) < NOW();
+
+    GET DIAGNOSTICS updated_count = ROW_COUNT;
+    RETURN updated_count;
+END;
 $$;
 
 
@@ -70,11 +70,11 @@ ALTER FUNCTION public.expire_old_products() OWNER TO postgres;
 
 CREATE FUNCTION public.generate_numero_commande() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN
-    NEW.numero_commande := 'CMD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(NEXTVAL('commandes_sequence')::TEXT, 6, '0');
-    RETURN NEW;
-END;
+    AS $$
+BEGIN
+    NEW.numero_commande := 'CMD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(NEXTVAL('commandes_sequence')::TEXT, 6, '0');
+    RETURN NEW;
+END;
 $$;
 
 
@@ -93,11 +93,11 @@ COMMENT ON FUNCTION public.generate_numero_commande() IS 'G‚nŠre automatiquem
 
 CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
+    AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -659,15 +659,24 @@ ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
 
 CREATE TABLE public.reviews (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    vendeur_id uuid NOT NULL,
-    client_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    commerce_id uuid NOT NULL,
     note integer NOT NULL,
+    commentaire text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT reviews_note_check CHECK (((note >= 1) AND (note <= 5)))
 );
 
 
 ALTER TABLE public.reviews OWNER TO postgres;
+
+--
+-- Name: TABLE reviews; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.reviews IS 'Avis des utilisateurs sur les commerces';
+
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: postgres
@@ -690,7 +699,7 @@ CREATE TABLE public.users (
     is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT users_user_type_check CHECK (((user_type)::text = ANY ((ARRAY['vendeur'::character varying, 'client'::character varying, 'association'::character varying])::text[])))
+    CONSTRAINT users_user_type_check CHECK (((user_type)::text = ANY (ARRAY[('vendeur'::character varying)::text, ('client'::character varying)::text, ('association'::character varying)::text])))
 );
 
 
@@ -1058,6 +1067,9 @@ COPY public.product_items (id, product_id, ingredient_id, nom, quantite, unite, 
 33	641db210-7453-432e-98ba-e5171d5abaf8	21	A	1	unite	2026-01-07 18:30:35.502189
 35	3ebec7a1-5f7c-4c60-94b1-781efd060ff1	21	Tomate	1	unite	2026-01-14 21:02:00.035933
 36	ee93a553-acb4-422b-ac7b-44d5df28e075	21	Y	1	unite	2026-01-14 22:10:27.149991
+37	05a4ef9f-bf74-4bf7-902d-553556f414f0	21	Tomates	1	unite	2026-01-23 01:28:28.610016
+39	a77c9eb6-7153-46b2-b03f-9f6db4acfe88	131	Test	1	unite	2026-01-23 01:32:11.84949
+40	76ba8e9b-f137-40d9-92d2-45e6e981bdb0	21	Test	1	unite	2026-01-23 11:41:15.133263
 \.
 
 
@@ -1066,7 +1078,6 @@ COPY public.product_items (id, product_id, ingredient_id, nom, quantite, unite, 
 --
 
 COPY public.products (id, vendeur_id, category_id, nom, description, prix, prix_original, stock, image_url, dlc, is_disponible, reserved_for_associations, created_at, updated_at, is_lot, pickup_start_time, pickup_end_time, pickup_instructions) FROM stdin;
-1acfc3e1-097b-4b44-af39-1f7d2f009a8d	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	T	2	5.00	10.00	2	\N	2026-01-21	t	f	2026-01-20 21:17:54.647072	2026-01-20 21:17:54.647072	f	21:17:00	21:18:00	\N
 ee93a553-acb4-422b-ac7b-44d5df28e075	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Y	Y	2.00	4.00	0	\N	2026-01-15	f	f	2026-01-14 22:10:27.147808	2026-01-15 00:43:26.733221	f	22:10:00	23:10:00	\N
 5dca52fc-76e8-4ebc-a274-fb94535c3248	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Tomates	2 tomates	2.00	4.00	6	https://res.cloudinary.com/dzrlsqsz2/image/upload/v1767138585/ecostock/products/fijhmmvwxmlpt83zvd3k.png	2026-01-01	f	f	2025-12-31 00:49:45.944044	2026-01-20 20:48:16.858164	f	00:49:00	01:49:00	\N
 c8caf8e9-b047-4ca8-9635-f6c130033953	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Tomates	2 tomates	2.00	4.00	8	\N	2026-01-01	f	f	2025-12-31 02:26:34.929922	2026-01-20 20:48:16.858164	f	02:25:00	03:25:00	\N
@@ -1077,6 +1088,9 @@ a53aff28-e528-4e90-9d57-90cfafb74e9b	e3488d05-9668-49dc-ac1b-8f57797c12e8	8	toma
 86c095d9-c83f-43a0-a21a-805377846f43	e39555f8-4d43-4477-9334-7501066af74d	8	T	4kg	2.00	4.00	1	\N	2026-01-08	f	f	2026-01-07 14:00:35.26292	2026-01-20 20:48:16.858164	f	14:00:00	15:00:00	\N
 641db210-7453-432e-98ba-e5171d5abaf8	e39555f8-4d43-4477-9334-7501066af74d	5	A	À	1.00	2.00	2	\N	2026-01-08	f	f	2026-01-07 18:30:35.498299	2026-01-20 20:48:16.858164	f	18:30:00	19:30:00	\N
 3ebec7a1-5f7c-4c60-94b1-781efd060ff1	e3488d05-9668-49dc-ac1b-8f57797c12e8	8	Tomate	2kg	2.00	4.00	3	https://res.cloudinary.com/dzrlsqsz2/image/upload/v1768420917/ecostock/products/nkf5h9kgrlpfjjfaraag.jpg	2026-01-15	f	f	2026-01-14 21:02:00.03341	2026-01-20 20:48:16.858164	f	21:00:00	22:00:00	\N
+a77c9eb6-7153-46b2-b03f-9f6db4acfe88	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Test	Test	2.00	4.00	2	\N	2026-01-24	f	f	2026-01-23 01:32:11.844902	2026-01-23 01:54:40.208336	f	01:31:00	01:33:00	\N
+05a4ef9f-bf74-4bf7-902d-553556f414f0	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Tomates	2kg	2.00	4.00	2	\N	2026-01-24	f	f	2026-01-23 01:28:28.601907	2026-01-23 11:40:40.214562	f	01:27:00	02:29:00	\N
+76ba8e9b-f137-40d9-92d2-45e6e981bdb0	e3488d05-9668-49dc-ac1b-8f57797c12e8	\N	Test	2kg	2.00	4.00	2	\N	2026-01-24	t	f	2026-01-23 11:41:15.121623	2026-01-23 11:41:15.121623	f	11:40:00	12:40:00	\N
 \.
 
 
@@ -1244,7 +1258,8 @@ COPY public.recipes (id, title, instructions, image_name, created_at, category, 
 -- Data for Name: reviews; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.reviews (id, vendeur_id, client_id, note, created_at) FROM stdin;
+COPY public.reviews (id, user_id, commerce_id, note, commentaire, created_at, updated_at) FROM stdin;
+c54f87a9-23d2-4082-b133-ae89e305f74d	b7b283e0-02c8-4924-9cd4-ac371212970e	70e33730-4464-4f94-b2b3-f13464464e4e	5	Très bien	2026-01-23 11:56:33.126324	2026-01-23 11:56:33.126324
 \.
 
 
@@ -1317,7 +1332,7 @@ SELECT pg_catalog.setval('public.panier_id_seq', 1, false);
 -- Name: product_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.product_items_id_seq', 36, true);
+SELECT pg_catalog.setval('public.product_items_id_seq', 40, true);
 
 
 --
@@ -1526,26 +1541,11 @@ ALTER TABLE ONLY public.reviews
 
 
 --
--- Name: reviews reviews_unique_client_vendeur; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: reviews reviews_unique_user_commerce; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT reviews_unique_client_vendeur UNIQUE (client_id, vendeur_id);
-
-
---
--- Name: CONSTRAINT reviews_unique_client_vendeur ON reviews; Type: COMMENT; Schema: public; Owner: postgres
---
-
-COMMENT ON CONSTRAINT reviews_unique_client_vendeur ON public.reviews IS 'Un client ne peut noter qu''une seule fois un vendeur';
-
-
---
--- Name: reviews reviews_vendeur_id_client_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT reviews_vendeur_id_client_id_key UNIQUE (vendeur_id, client_id);
+    ADD CONSTRAINT reviews_unique_user_commerce UNIQUE (user_id, commerce_id);
 
 
 --
@@ -1719,24 +1719,17 @@ CREATE INDEX idx_recipe_ingredients_recipe ON public.recipe_ingredients USING bt
 
 
 --
--- Name: idx_reviews_client; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_reviews_commerce_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reviews_client ON public.reviews USING btree (client_id);
-
-
---
--- Name: idx_reviews_note; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_reviews_note ON public.reviews USING btree (note);
+CREATE INDEX idx_reviews_commerce_id ON public.reviews USING btree (commerce_id);
 
 
 --
--- Name: idx_reviews_vendeur; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_reviews_user_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_reviews_vendeur ON public.reviews USING btree (vendeur_id);
+CREATE INDEX idx_reviews_user_id ON public.reviews USING btree (user_id);
 
 
 --
@@ -1793,6 +1786,13 @@ CREATE TRIGGER update_commerces_updated_at BEFORE UPDATE ON public.commerces FOR
 --
 
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: reviews update_reviews_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON public.reviews FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -1931,24 +1931,24 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: reviews reviews_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: reviews reviews_commerce_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT reviews_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT reviews_commerce_id_fkey FOREIGN KEY (commerce_id) REFERENCES public.commerces(id) ON DELETE CASCADE;
 
 
 --
--- Name: reviews reviews_vendeur_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: reviews reviews_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT reviews_vendeur_id_fkey FOREIGN KEY (vendeur_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT reviews_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aaMlLF4geivn1hLOS1O0BEDLInpv8lxyFnK6uiC9Xx7cglgQuLFiUhY5bguxs3o
+\unrestrict Ld24cYknirEfjPDmJTcTpMoNouhSzG0avYgZSHZZ6nnQIjCH1e4RzNOvViPuS4T
 

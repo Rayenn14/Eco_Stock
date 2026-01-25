@@ -15,6 +15,8 @@ import * as Location from 'expo-location';
 import { styles } from './ProductDetailScreen.styles';
 import * as API from '../services/api';
 import { useCart } from '../contexts/CartContext';
+import { ReviewModal } from '../components/ReviewModal';
+import { CommerceReviewsModal } from '../components/CommerceReviewsModal';
 
 interface Product {
   id: string;
@@ -27,6 +29,7 @@ interface Product {
   dlc: string;
   date_peremption: string | null;
   is_disponible: boolean;
+  commerce_id: string | null;
   nom_commerce: string;
   adresse: string;
   latitude: string | null;
@@ -41,6 +44,8 @@ interface Product {
   pickup_start_time: string | null;
   pickup_end_time: string | null;
   pickup_instructions: string | null;
+  commerce_rating: number | null;
+  commerce_reviews_count: number | null;
 }
 
 interface ProductDetailScreenProps {
@@ -62,6 +67,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewsListModal, setShowReviewsListModal] = useState(false);
 
   useEffect(() => {
     if (productId) {
@@ -256,6 +263,23 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Commerce</Text>
             <Text style={styles.shopName}>{product.nom_commerce}</Text>
+            {product.commerce_rating && parseFloat(String(product.commerce_rating)) > 0 ? (
+              <TouchableOpacity
+                style={styles.ratingContainer}
+                onPress={() => setShowReviewsListModal(true)}
+              >
+                <Text style={styles.ratingStars}>
+                  {'\u2605'.repeat(Math.round(parseFloat(String(product.commerce_rating))))}
+                  {'\u2606'.repeat(5 - Math.round(parseFloat(String(product.commerce_rating))))}
+                </Text>
+                <Text style={styles.ratingText}>
+                  {parseFloat(String(product.commerce_rating)).toFixed(1)} ({product.commerce_reviews_count || 0} avis)
+                </Text>
+                <Text style={styles.viewReviewsLink}>Voir les avis</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.noRating}>Pas encore d'avis</Text>
+            )}
             <Text style={styles.shopAddress}>{product.adresse}</Text>
 
             {product.walking_time && (
@@ -321,6 +345,15 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                   </View>
                 )}
               </View>
+            )}
+
+            {product.commerce_id && (
+              <TouchableOpacity
+                style={styles.reviewButton}
+                onPress={() => setShowReviewModal(true)}
+              >
+                <Text style={styles.reviewButtonText}>Donner mon avis</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -412,6 +445,24 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {product.commerce_id && (
+        <>
+          <ReviewModal
+            visible={showReviewModal}
+            onClose={() => setShowReviewModal(false)}
+            commerceId={product.commerce_id}
+            commerceName={product.nom_commerce}
+            onReviewSubmitted={() => loadProduct(location?.latitude, location?.longitude)}
+          />
+          <CommerceReviewsModal
+            visible={showReviewsListModal}
+            onClose={() => setShowReviewsListModal(false)}
+            commerceId={product.commerce_id}
+            commerceName={product.nom_commerce}
+          />
+        </>
+      )}
     </View>
   );
 };

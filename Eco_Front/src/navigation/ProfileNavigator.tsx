@@ -10,6 +10,8 @@ import { SellerProductsScreen } from '../screens/SellerProductsScreen';
 import { SellerOrdersScreen } from '../screens/SellerOrdersScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { MyReviewsScreen } from '../screens/MyReviewsScreen';
+import { ShopReviewsScreen } from '../screens/ShopReviewsScreen';
 import { Alert } from 'react-native';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
@@ -48,6 +50,14 @@ const ProfileScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParam
       onNavigateSettings={() => {
         console.log('[ProfileScreenWrapper] Navigate to Settings');
         navigation.navigate('Settings');
+      }}
+      onNavigateMyReviews={() => {
+        console.log('[ProfileScreenWrapper] Navigate to MyReviews');
+        navigation.navigate('MyReviews');
+      }}
+      onNavigateShopReviews={() => {
+        console.log('[ProfileScreenWrapper] Navigate to ShopReviews');
+        navigation.navigate('ShopReviews');
       }}
       onNavigateBack={() => {
         console.log('[ProfileScreenWrapper] Navigate back');
@@ -174,6 +184,34 @@ const SettingsScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackPara
   );
 };
 
+// Wrapper pour MyReviewsScreen
+const MyReviewsScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'MyReviews'>) => {
+  console.log('[MyReviewsScreenWrapper] Rendering');
+
+  return (
+    <MyReviewsScreen
+      onNavigateBack={() => {
+        console.log('[MyReviewsScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+    />
+  );
+};
+
+// Wrapper pour ShopReviewsScreen
+const ShopReviewsScreenWrapper = ({ navigation }: StackScreenProps<ProfileStackParamList, 'ShopReviews'>) => {
+  console.log('[ShopReviewsScreenWrapper] Rendering');
+
+  return (
+    <ShopReviewsScreen
+      onNavigateBack={() => {
+        console.log('[ShopReviewsScreenWrapper] Navigate back');
+        navigation.goBack();
+      }}
+    />
+  );
+};
+
 export const ProfileNavigator = () => {
   console.log('[ProfileNavigator] Rendering Profile stack');
 
@@ -207,6 +245,8 @@ export const ProfileNavigator = () => {
         }}
       />
       <Stack.Screen name="Settings" component={SettingsScreenWrapper} />
+      <Stack.Screen name="MyReviews" component={MyReviewsScreenWrapper} />
+      <Stack.Screen name="ShopReviews" component={ShopReviewsScreenWrapper} />
     </Stack.Navigator>
   );
 };

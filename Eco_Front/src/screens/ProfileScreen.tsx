@@ -22,6 +22,8 @@ interface ProfileScreenProps {
   onNavigateAddProduct: () => void;
   onNavigateOrders: () => void;
   onNavigateSettings: () => void;
+  onNavigateMyReviews: () => void;
+  onNavigateShopReviews: () => void;
   onNavigateBack: () => void;
   onLogout: () => void;
 }
@@ -34,6 +36,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateAddProduct,
   onNavigateOrders,
   onNavigateSettings,
+  onNavigateMyReviews,
+  onNavigateShopReviews,
   onNavigateBack,
   onLogout,
 }) => {
@@ -240,6 +244,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
                 <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={onNavigateShopReviews}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#FEF9C3' }]}>
+                    <Text style={styles.menuIconText}>⭐</Text>
+                  </View>
+                  <Text style={styles.menuItemText}>Avis boutique</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
             </>
           )}
 
@@ -253,6 +270,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Text style={styles.menuIconText}>🛒</Text>
               </View>
               <Text style={styles.menuItemText}>Mes achats</Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={onNavigateMyReviews}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FEF9C3' }]}>
+                <Text style={styles.menuIconText}>⭐</Text>
+              </View>
+              <Text style={styles.menuItemText}>Mes avis</Text>
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
