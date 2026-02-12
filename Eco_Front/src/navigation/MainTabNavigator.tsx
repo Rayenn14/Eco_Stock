@@ -9,6 +9,7 @@ import { CartScreen } from '../screens/CartScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
 import { RecipeDetailScreen } from '../screens/RecipeDetailScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
+import { IngredientScannerScreen } from '../screens/IngredientScannerScreen';
 import { PaymentScreen } from '../screens/PaymentScreen';
 import { BottomNavBar } from '../components/BottomNavBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,6 +25,11 @@ const RecipesNavigator = () => {
       <RecipesStack.Screen
         name="RecipesList"
         component={RecipesScreen}
+      />
+      <RecipesStack.Screen
+        name="IngredientScanner"
+        component={IngredientScannerScreen}
+        options={{ headerShown: false }}
       />
       <RecipesStack.Screen
         name="RecipeDetail"

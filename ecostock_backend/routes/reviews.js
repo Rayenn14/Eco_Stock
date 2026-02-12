@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
+const { getCache, setCache, invalidateCache } = require('../utils/cache');
 
 // Ajouter ou mettre a jour un avis sur un commerce
 router.post('/', authenticateToken, async (req, res) => {
@@ -27,12 +28,12 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // Verifier que le commerce existe
-    const commerceCheck = await db.query(
-      'SELECT id, vendeur_id FROM commerces WHERE id = $1',
-      [commerce_id]
-    );
+    const commerce = await prisma.commerces.findUnique({
+      where: { id: commerce_id },
+      select: { id: true, vendeur_id: true },
+    });
 
-    if (commerceCheck.rows.length === 0) {
+    if (!commerce) {
       return res.status(404).json({
         success: false,
         message: 'Commerce introuvable'
@@ -40,7 +41,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // Empecher le vendeur de noter son propre commerce
-    if (commerceCheck.rows[0].vendeur_id === userId) {
+    if (commerce.vendeur_id === userId) {
       return res.status(403).json({
         success: false,
         message: 'Vous ne pouvez pas noter votre propre commerce'
@@ -48,21 +49,35 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // Upsert: inserer ou mettre a jour si existe deja
-    const result = await db.query(
-      `INSERT INTO reviews (user_id, commerce_id, note, commentaire)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, commerce_id)
-       DO UPDATE SET note = $3, commentaire = $4, updated_at = NOW()
-       RETURNING *`,
-      [userId, commerce_id, note, commentaire || null]
-    );
+    const review = await prisma.reviews.upsert({
+      where: {
+        reviews_unique_user_commerce: {
+          user_id: userId,
+          commerce_id,
+        },
+      },
+      update: {
+        note,
+        commentaire: commentaire || null,
+        updated_at: new Date(),
+      },
+      create: {
+        user_id: userId,
+        commerce_id,
+        note,
+        commentaire: commentaire || null,
+      },
+    });
 
-    console.log('[Reviews] Avis cree/mis a jour:', result.rows[0].id);
+    console.log('[Reviews] Avis cree/mis a jour:', review.id);
+
+    // Invalider le cache des stats du commerce
+    await invalidateCache(`commerce:stats:${commerce_id}`);
 
     res.status(201).json({
       success: true,
       message: 'Avis enregistre avec succes',
-      review: result.rows[0]
+      review
     });
   } catch (error) {
     console.error('[Reviews] Erreur creation avis:', error);
@@ -80,42 +95,58 @@ router.get('/commerce/:commerceId', authenticateToken, async (req, res) => {
 
     console.log('[Reviews] GET /commerce/:id -', commerceId);
 
-    const result = await db.query(
-      `SELECT
-        r.id,
-        r.note,
-        r.commentaire,
-        r.created_at,
-        r.updated_at,
-        u.prenom,
-        u.nom,
-        u.photo_profil
-       FROM reviews r
-       INNER JOIN users u ON r.user_id = u.id
-       WHERE r.commerce_id = $1
-       ORDER BY r.created_at DESC`,
-      [commerceId]
-    );
+    // Verifier le cache pour les stats
+    const cachedStats = await getCache(`commerce:stats:${commerceId}`);
 
-    // Calculer la moyenne
-    const avgResult = await db.query(
-      `SELECT
-        COUNT(*) as total_reviews,
-        ROUND(AVG(note)::numeric, 1) as average_rating
-       FROM reviews
-       WHERE commerce_id = $1`,
-      [commerceId]
-    );
+    const reviews = await prisma.reviews.findMany({
+      where: { commerce_id: commerceId },
+      include: {
+        users: {
+          select: {
+            prenom: true,
+            nom: true,
+            photo_profil: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
 
-    const stats = avgResult.rows[0];
+    // Formater les reviews pour correspondre au format attendu par le front
+    const formattedReviews = reviews.map(r => ({
+      id: r.id,
+      note: r.note,
+      commentaire: r.commentaire,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      prenom: r.users.prenom,
+      nom: r.users.nom,
+      photo_profil: r.users.photo_profil,
+    }));
+
+    let stats;
+    if (cachedStats) {
+      stats = cachedStats;
+    } else {
+      const aggregate = await prisma.reviews.aggregate({
+        where: { commerce_id: commerceId },
+        _count: true,
+        _avg: { note: true },
+      });
+
+      stats = {
+        total_reviews: aggregate._count || 0,
+        average_rating: aggregate._avg.note ? parseFloat(aggregate._avg.note.toFixed(1)) : 0,
+      };
+
+      // Cacher les stats 5 minutes
+      await setCache(`commerce:stats:${commerceId}`, stats, 300);
+    }
 
     res.json({
       success: true,
-      reviews: result.rows,
-      stats: {
-        total_reviews: parseInt(stats.total_reviews) || 0,
-        average_rating: parseFloat(stats.average_rating) || 0
-      }
+      reviews: formattedReviews,
+      stats,
     });
   } catch (error) {
     console.error('[Reviews] Erreur recuperation avis commerce:', error);
@@ -133,26 +164,34 @@ router.get('/my-reviews', authenticateToken, async (req, res) => {
 
     console.log('[Reviews] GET /my-reviews - user:', userId);
 
-    const result = await db.query(
-      `SELECT
-        r.id,
-        r.note,
-        r.commentaire,
-        r.created_at,
-        r.updated_at,
-        c.id as commerce_id,
-        c.nom_commerce,
-        c.adresse
-       FROM reviews r
-       INNER JOIN commerces c ON r.commerce_id = c.id
-       WHERE r.user_id = $1
-       ORDER BY r.created_at DESC`,
-      [userId]
-    );
+    const reviews = await prisma.reviews.findMany({
+      where: { user_id: userId },
+      include: {
+        commerces: {
+          select: {
+            id: true,
+            nom_commerce: true,
+            adresse: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const formattedReviews = reviews.map(r => ({
+      id: r.id,
+      note: r.note,
+      commentaire: r.commentaire,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      commerce_id: r.commerces.id,
+      nom_commerce: r.commerces.nom_commerce,
+      adresse: r.commerces.adresse,
+    }));
 
     res.json({
       success: true,
-      reviews: result.rows
+      reviews: formattedReviews,
     });
   } catch (error) {
     console.error('[Reviews] Erreur recuperation mes avis:', error);
@@ -179,12 +218,12 @@ router.get('/shop-reviews', authenticateToken, async (req, res) => {
     }
 
     // Recuperer le commerce du vendeur
-    const commerceResult = await db.query(
-      'SELECT id, nom_commerce FROM commerces WHERE vendeur_id = $1',
-      [vendeurId]
-    );
+    const commerce = await prisma.commerces.findUnique({
+      where: { vendeur_id: vendeurId },
+      select: { id: true, nom_commerce: true },
+    });
 
-    if (commerceResult.rows.length === 0) {
+    if (!commerce) {
       return res.json({
         success: true,
         reviews: [],
@@ -193,45 +232,48 @@ router.get('/shop-reviews', authenticateToken, async (req, res) => {
       });
     }
 
-    const commerce = commerceResult.rows[0];
+    const reviews = await prisma.reviews.findMany({
+      where: { commerce_id: commerce.id },
+      include: {
+        users: {
+          select: {
+            prenom: true,
+            nom: true,
+            photo_profil: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
 
-    const result = await db.query(
-      `SELECT
-        r.id,
-        r.note,
-        r.commentaire,
-        r.created_at,
-        r.updated_at,
-        u.prenom,
-        u.nom,
-        u.photo_profil
-       FROM reviews r
-       INNER JOIN users u ON r.user_id = u.id
-       WHERE r.commerce_id = $1
-       ORDER BY r.created_at DESC`,
-      [commerce.id]
-    );
+    const formattedReviews = reviews.map(r => ({
+      id: r.id,
+      note: r.note,
+      commentaire: r.commentaire,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      prenom: r.users.prenom,
+      nom: r.users.nom,
+      photo_profil: r.users.photo_profil,
+    }));
 
     // Calculer la moyenne
-    const avgResult = await db.query(
-      `SELECT
-        COUNT(*) as total_reviews,
-        ROUND(AVG(note)::numeric, 1) as average_rating
-       FROM reviews
-       WHERE commerce_id = $1`,
-      [commerce.id]
-    );
+    const aggregate = await prisma.reviews.aggregate({
+      where: { commerce_id: commerce.id },
+      _count: true,
+      _avg: { note: true },
+    });
 
-    const stats = avgResult.rows[0];
+    const stats = {
+      total_reviews: aggregate._count || 0,
+      average_rating: aggregate._avg.note ? parseFloat(aggregate._avg.note.toFixed(1)) : 0,
+    };
 
     res.json({
       success: true,
-      reviews: result.rows,
-      stats: {
-        total_reviews: parseInt(stats.total_reviews) || 0,
-        average_rating: parseFloat(stats.average_rating) || 0
-      },
-      commerce: commerce
+      reviews: formattedReviews,
+      stats,
+      commerce,
     });
   } catch (error) {
     console.error('[Reviews] Erreur recuperation avis boutique:', error);
@@ -251,19 +293,26 @@ router.delete('/:reviewId', authenticateToken, async (req, res) => {
     console.log('[Reviews] DELETE /:id -', reviewId, 'user:', userId);
 
     // Verifier que l'avis appartient a l'utilisateur
-    const checkResult = await db.query(
-      'SELECT id FROM reviews WHERE id = $1 AND user_id = $2',
-      [reviewId, userId]
-    );
+    const review = await prisma.reviews.findFirst({
+      where: {
+        id: reviewId,
+        user_id: userId,
+      },
+    });
 
-    if (checkResult.rows.length === 0) {
+    if (!review) {
       return res.status(404).json({
         success: false,
         message: 'Avis introuvable ou non autorise'
       });
     }
 
-    await db.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+    await prisma.reviews.delete({
+      where: { id: reviewId },
+    });
+
+    // Invalider le cache des stats
+    await invalidateCache(`commerce:stats:${review.commerce_id}`);
 
     res.json({
       success: true,
@@ -284,15 +333,24 @@ router.get('/check/:commerceId', authenticateToken, async (req, res) => {
     const { commerceId } = req.params;
     const userId = req.user.id;
 
-    const result = await db.query(
-      'SELECT id, note, commentaire FROM reviews WHERE user_id = $1 AND commerce_id = $2',
-      [userId, commerceId]
-    );
+    const review = await prisma.reviews.findUnique({
+      where: {
+        reviews_unique_user_commerce: {
+          user_id: userId,
+          commerce_id: commerceId,
+        },
+      },
+      select: {
+        id: true,
+        note: true,
+        commentaire: true,
+      },
+    });
 
     res.json({
       success: true,
-      hasReview: result.rows.length > 0,
-      review: result.rows[0] || null
+      hasReview: !!review,
+      review: review || null,
     });
   } catch (error) {
     console.error('[Reviews] Erreur verification avis:', error);

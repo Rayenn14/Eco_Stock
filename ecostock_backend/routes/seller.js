@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const { uploadImage, deleteImage } = require('../services/cloudinary');
 const checkExpiredProducts = require('../middleware/checkExpiredProducts');
+const { getCache, setCache, invalidateCache } = require('../utils/cache');
 
 // Vérifier les produits expirés avant chaque requête
 router.use(checkExpiredProducts);
@@ -30,14 +31,14 @@ router.get('/my-products', authenticateToken, isVendeur, async (req, res) => {
 
     console.log('[Seller] GET /my-products - Fetching products for seller:', req.user.id, 'showExpired:', includeExpired);
 
-    // Filtre pour exclure les produits expirés (par défaut)
+    // Filtres d'expiration complexes -> $queryRawUnsafe
     const expirationFilter = includeExpired
       ? ''
       : `AND p.is_disponible = true
          AND p.dlc >= CURRENT_DATE
          AND (p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())`;
 
-    const result = await db.query(
+    const products = await prisma.$queryRawUnsafe(
       `SELECT
         p.id,
         p.nom,
@@ -61,16 +62,16 @@ router.get('/my-products', authenticateToken, isVendeur, async (req, res) => {
         END as status
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
-      WHERE p.vendeur_id = $1
+      WHERE p.vendeur_id = $1::uuid
       ${expirationFilter}
       ORDER BY p.created_at DESC`,
-      [req.user.id]
+      req.user.id
     );
 
-    console.log('[Seller] Found', result.rows.length, 'products');
+    console.log('[Seller] Found', products.length, 'products');
     res.json({
       success: true,
-      products: result.rows
+      products
     });
   } catch (error) {
     console.error('[Seller] Error fetching seller products:', error);
@@ -142,45 +143,27 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       console.log('[Seller] Image uploaded:', cloudinaryImageUrl);
     }
 
-    // Créer le produit
-    const result = await db.query(
-      `INSERT INTO products (
-        vendeur_id,
-        category_id,
+    // Créer le produit avec Prisma
+    const product = await prisma.products.create({
+      data: {
+        vendeur_id: req.user.id,
+        category_id: category_id ? parseInt(category_id) : null,
         nom,
-        description,
-        prix,
-        prix_original,
-        stock,
-        image_url,
-        dlc,
-        is_lot,
-        is_disponible,
-        reserved_for_associations,
-        pickup_start_time,
-        pickup_end_time,
-        pickup_instructions
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13, $14)
-      RETURNING *`,
-      [
-        req.user.id,
-        category_id || null,
-        nom,
-        description || null,
-        prix,
-        prix_original || null,
-        stock,
-        cloudinaryImageUrl || null,
-        dlc,
-        is_lot || false,
-        reserved_for_associations || false,
-        pickup_start_time || null,
-        pickup_end_time || null,
-        pickup_instructions || null
-      ]
-    );
+        description: description || null,
+        prix: parseFloat(prix),
+        prix_original: prix_original ? parseFloat(prix_original) : null,
+        stock: parseInt(stock),
+        image_url: cloudinaryImageUrl || null,
+        dlc: new Date(dlc),
+        is_lot: is_lot || false,
+        is_disponible: true,
+        reserved_for_associations: reserved_for_associations || false,
+        pickup_start_time: pickup_start_time ? new Date(`1970-01-01T${pickup_start_time}Z`) : null,
+        pickup_end_time: pickup_end_time ? new Date(`1970-01-01T${pickup_end_time}Z`) : null,
+        pickup_instructions: pickup_instructions || null,
+      },
+    });
 
-    const product = result.rows[0];
     console.log('[Seller] Product created with ID:', product.id);
 
     // Si c'est un lot avec plusieurs ingrédients
@@ -188,11 +171,15 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       console.log('[Seller] Linking', ingredient_ids.length, 'ingredients to lot product', product.id);
 
       for (const ingredientId of ingredient_ids) {
-        await db.query(
-          `INSERT INTO product_items (product_id, ingredient_id, nom, quantite, unite)
-           VALUES ($1, $2, $3, 1, 'unite')`,
-          [product.id, ingredientId, nom]
-        );
+        await prisma.product_items.create({
+          data: {
+            product_id: product.id,
+            ingredient_id: parseInt(ingredientId),
+            nom,
+            quantite: 1,
+            unite: 'unite',
+          },
+        });
       }
 
       console.log('[Seller] All ingredients linked successfully to lot');
@@ -200,15 +187,22 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
     // Si c'est un produit normal avec un seul ingrédient
     else if (!is_lot && ingredient_id) {
       console.log('[Seller] Linking ingredient', ingredient_id, 'to product', product.id);
-      await db.query(
-        `INSERT INTO product_items (product_id, ingredient_id, nom, quantite, unite)
-         VALUES ($1, $2, $3, 1, 'unite')`,
-        [product.id, ingredient_id, nom]
-      );
+      await prisma.product_items.create({
+        data: {
+          product_id: product.id,
+          ingredient_id: parseInt(ingredient_id),
+          nom,
+          quantite: 1,
+          unite: 'unite',
+        },
+      });
       console.log('[Seller] Ingredient linked successfully');
     } else {
       console.log('[Seller] No ingredient provided');
     }
+
+    // Invalider le cache des produits
+    await invalidateCache('products:*');
 
     console.log('[Seller] Product creation successful');
     res.status(201).json({
@@ -242,20 +236,20 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
       reserved_for_associations
     } = req.body;
 
-    // Vérifier que le produit appartient au vendeur et récupére l'ancienne image
-    const checkResult = await db.query(
-      'SELECT id, image_url FROM products WHERE id = $1 AND vendeur_id = $2',
-      [productId, req.user.id]
-    );
+    // Vérifier que le produit appartient au vendeur et récupérer l'ancienne image
+    const existing = await prisma.products.findFirst({
+      where: { id: productId, vendeur_id: req.user.id },
+      select: { id: true, image_url: true },
+    });
 
-    if (checkResult.rows.length === 0) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: 'Produit introuvable ou non autorisé'
       });
     }
 
-    const oldImage = checkResult.rows[0].image_url;
+    const oldImage = existing.image_url;
 
     // Upload de la nouvelle image vers Cloudinary si fournie
     let cloudinaryImageUrl = image_url;
@@ -264,48 +258,37 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
       cloudinaryImageUrl = await uploadImage(image_url, 'ecostock/products');
       console.log('[Seller] New image uploaded:', cloudinaryImageUrl);
 
-      // Supprimer l'ancienne image de Cloudinary si elle existe
       if (oldImage && oldImage.includes('cloudinary.com')) {
         await deleteImage(oldImage);
         console.log('[Seller] Old image deleted from Cloudinary');
       }
     }
 
-    const result = await db.query(
-      `UPDATE products SET
-        nom = COALESCE($1, nom),
-        description = COALESCE($2, description),
-        prix = COALESCE($3, prix),
-        prix_original = COALESCE($4, prix_original),
-        stock = COALESCE($5, stock),
-        image_url = COALESCE($6, image_url),
-        dlc = COALESCE($7, dlc),
-        category_id = COALESCE($8, category_id),
-        is_disponible = COALESCE($9, is_disponible),
-        reserved_for_associations = COALESCE($10, reserved_for_associations),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11 AND vendeur_id = $12
-      RETURNING *`,
-      [
-        nom,
-        description,
-        prix,
-        prix_original,
-        stock,
-        cloudinaryImageUrl,
-        dlc,
-        category_id,
-        is_disponible,
-        reserved_for_associations,
-        productId,
-        req.user.id
-      ]
-    );
+    // Construire les données de mise à jour (COALESCE equivalent)
+    const updateData = { updated_at: new Date() };
+    if (nom !== undefined) updateData.nom = nom;
+    if (description !== undefined) updateData.description = description;
+    if (prix !== undefined) updateData.prix = parseFloat(prix);
+    if (prix_original !== undefined) updateData.prix_original = parseFloat(prix_original);
+    if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (cloudinaryImageUrl !== undefined) updateData.image_url = cloudinaryImageUrl;
+    if (dlc !== undefined) updateData.dlc = new Date(dlc);
+    if (category_id !== undefined) updateData.category_id = parseInt(category_id);
+    if (is_disponible !== undefined) updateData.is_disponible = is_disponible;
+    if (reserved_for_associations !== undefined) updateData.reserved_for_associations = reserved_for_associations;
+
+    const product = await prisma.products.update({
+      where: { id: productId },
+      data: updateData,
+    });
+
+    // Invalider le cache
+    await invalidateCache('products:*');
 
     res.json({
       success: true,
       message: 'Produit mis à jour avec succès',
-      product: result.rows[0]
+      product
     });
   } catch (error) {
     console.error('Error updating product:', error);
@@ -322,12 +305,12 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
     const productId = req.params.id;
 
     // Vérifier que le produit appartient au vendeur et récupérer l'image
-    const checkResult = await db.query(
-      'SELECT id, image_url FROM products WHERE id = $1 AND vendeur_id = $2',
-      [productId, req.user.id]
-    );
+    const existing = await prisma.products.findFirst({
+      where: { id: productId, vendeur_id: req.user.id },
+      select: { id: true, image_url: true },
+    });
 
-    if (checkResult.rows.length === 0) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: 'Produit introuvable ou non autorisé'
@@ -335,31 +318,33 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
     }
 
     // Vérifier si le produit est dans une commande
-    const inOrderCheck = await db.query(
-      'SELECT id FROM commande_items WHERE product_id = $1 LIMIT 1',
-      [productId]
-    );
+    const inOrder = await prisma.commande_items.findFirst({
+      where: { product_id: productId },
+      select: { id: true },
+    });
 
-    if (inOrderCheck.rows.length > 0) {
+    if (inOrder) {
       return res.status(400).json({
         success: false,
         message: 'Impossible de supprimer ce produit car il fait partie d\'une commande'
       });
     }
 
-    const productImage = checkResult.rows[0].image_url;
+    const productImage = existing.image_url;
 
-    // Supprimer le produit de la base de données
-    await db.query(
-      'DELETE FROM products WHERE id = $1 AND vendeur_id = $2',
-      [productId, req.user.id]
-    );
+    // Supprimer le produit
+    await prisma.products.delete({
+      where: { id: productId },
+    });
 
     // Supprimer l'image de Cloudinary si elle existe
     if (productImage && productImage.includes('cloudinary.com')) {
       await deleteImage(productImage);
       console.log('[Seller] Product image deleted from Cloudinary');
     }
+
+    // Invalider le cache
+    await invalidateCache('products:*');
 
     res.json({
       success: true,
@@ -374,16 +359,26 @@ router.delete('/products/:id', authenticateToken, isVendeur, async (req, res) =>
   }
 });
 
-// Récupérer les catégories disponibles
+// Récupérer les catégories disponibles (avec cache Redis)
 router.get('/categories', authenticateToken, async (req, res) => {
   try {
-    const result = await db.query(
-      'SELECT id, nom, description FROM categories ORDER BY nom'
-    );
+    // Verifier le cache (TTL: 1 heure)
+    const cached = await getCache('categories:all');
+    if (cached) {
+      return res.json({ success: true, categories: cached });
+    }
+
+    const categories = await prisma.categories.findMany({
+      select: { id: true, nom: true, description: true },
+      orderBy: { nom: 'asc' },
+    });
+
+    // Cacher pour 1 heure
+    await setCache('categories:all', categories, 3600);
 
     res.json({
       success: true,
-      categories: result.rows
+      categories
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -402,31 +397,33 @@ router.get('/ingredients/search', authenticateToken, async (req, res) => {
 
     if (!query || query.trim().length < 2) {
       console.log('[Seller] No query or query too short - returning first 10 ingredients');
-      // Retourner les 10 premiers ingrédients si pas de recherche
-      const result = await db.query(
-        'SELECT id, name FROM ingredients ORDER BY name LIMIT 10'
-      );
+      const ingredients = await prisma.ingredients.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+        take: 10,
+      });
 
-      console.log('[Seller] Returning', result.rows.length, 'default ingredients');
+      console.log('[Seller] Returning', ingredients.length, 'default ingredients');
       return res.json({
         success: true,
-        ingredients: result.rows
+        ingredients
       });
     }
 
     // Récupérer tous les ingrédients
     console.log('[Seller] Fetching all ingredients for fuzzy matching');
-    const allIngredients = await db.query(
-      'SELECT id, name FROM ingredients ORDER BY name'
-    );
+    const allIngredients = await prisma.ingredients.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
 
-    console.log('[Seller] Total ingredients in database:', allIngredients.rows.length);
+    console.log('[Seller] Total ingredients in database:', allIngredients.length);
 
     // Utiliser le fuzzy matching
     const { findBestMatches } = require('../utils/fuzzyMatch');
     const matches = findBestMatches(
       query,
-      allIngredients.rows,
+      allIngredients,
       0.5, // Seuil de similarité à 50%
       10   // Maximum 10 résultats
     );
@@ -449,11 +446,11 @@ router.get('/ingredients/search', authenticateToken, async (req, res) => {
   }
 });
 
-// Récupérer les commandes du vendeur  
+// Récupérer les commandes du vendeur
 router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
   try {
-    const ordersQuery = await db.query(
-      `SELECT
+    const rows = await prisma.$queryRaw`
+      SELECT
         c.id as commande_id,
         c.numero_commande,
         c.total,
@@ -472,22 +469,20 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
         ci.quantite,
         ci.prix_unitaire,
         (ci.prix_unitaire * ci.quantite) as line_total,
-        p.pickup_start_time,
-        p.pickup_end_time,
+        p.pickup_start_time::text as pickup_start_time,
+        p.pickup_end_time::text as pickup_end_time,
         p.pickup_instructions
       FROM commandes c
       INNER JOIN users u ON c.client_id = u.id
       JOIN commande_items ci ON c.id = ci.commande_id
       JOIN products p ON ci.product_id = p.id
-      WHERE c.vendeur_id = $1
+      WHERE c.vendeur_id = ${req.user.id}::uuid
         AND c.stripe_payment_status = 'succeeded'
-      ORDER BY c.created_at DESC`,
-      [req.user.id]
-    );
+      ORDER BY c.created_at DESC`;
 
-    // Grouper les produits par commande 
+    // Grouper les produits par commande
     const ordersMap = {};
-    for (const row of ordersQuery.rows) {
+    for (const row of rows) {
       if (!ordersMap[row.commande_id]) {
         ordersMap[row.commande_id] = {
           id: row.commande_id,
@@ -521,11 +516,9 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
       });
     }
 
-    const orders = Object.values(ordersMap);
-
     res.json({
       success: true,
-      orders: orders
+      orders: Object.values(ordersMap)
     });
   } catch (error) {
     console.error('Error fetching orders:', error);

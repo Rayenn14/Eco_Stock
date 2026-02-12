@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const checkExpiredProducts = require('../middleware/checkExpiredProducts');
+const { getCache, setCache } = require('../utils/cache');
 
 // Vérifier les produits expirés avant chaque requête
 router.use(checkExpiredProducts);
@@ -13,9 +14,8 @@ router.get('/search', authenticateToken, async (req, res) => {
     const { query, latitude, longitude, page, limit } = req.query;
     const userType = req.user.user_type;
 
-    // Pagination parameters
     const currentPage = parseInt(page) || 1;
-    const pageLimit = parseInt(limit) || 50; // Plus élevé pour la recherche
+    const pageLimit = parseInt(limit) || 50;
     const offset = (currentPage - 1) * pageLimit;
 
     console.log('[Products] GET /search - user_type:', userType, 'query:', query, 'page:', currentPage);
@@ -37,15 +37,12 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     const searchQuery = query.trim();
 
-    // Construire le filtre pour reserved_for_associations
     const reservedFilter = userType === 'association'
-      ? '' // Les associations voient tout
+      ? ''
       : 'AND (p.reserved_for_associations = false OR p.reserved_for_associations IS NULL)';
 
-    console.log('[Products] Reserved filter:', reservedFilter || 'none (association)');
-
-    // Recherche par nom de produit OU ingrédients avec scoring basé sur la position
-    const result = await db.query(
+    // Requete complexe avec scoring -> $queryRawUnsafe
+    const result = await prisma.$queryRawUnsafe(
       `SELECT
         p.id,
         p.nom,
@@ -99,11 +96,11 @@ router.get('/search', authenticateToken, async (req, res) => {
       GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY score DESC, p.created_at DESC
       LIMIT $2 OFFSET $3`,
-      [searchQuery, pageLimit, offset]
+      searchQuery, pageLimit, offset
     );
 
-    // Count total (pour pagination)
-    const countResult = await db.query(
+    // Count total
+    const countResult = await prisma.$queryRawUnsafe(
       `SELECT COUNT(DISTINCT p.id) as total
       FROM products p
       INNER JOIN users u ON p.vendeur_id = u.id
@@ -122,16 +119,16 @@ router.get('/search', authenticateToken, async (req, res) => {
           OR LOWER(p.description) LIKE '%' || LOWER($1) || '%'
           OR LOWER(cat.nom) LIKE '%' || LOWER($1) || '%'
         )`,
-      [searchQuery]
+      searchQuery
     );
 
-    const totalProducts = parseInt(countResult.rows[0].total);
+    const totalProducts = parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalProducts / pageLimit);
 
     let userLat = latitude ? parseFloat(latitude) : null;
     let userLon = longitude ? parseFloat(longitude) : null;
 
-    const products = result.rows.map(product => {
+    const products = result.map(product => {
       let distance = null;
       let walkingTime = null;
       let transitTime = null;
@@ -173,9 +170,9 @@ router.get('/search', authenticateToken, async (req, res) => {
       success: true,
       products,
       pagination: {
-        currentPage: currentPage,
-        totalPages: totalPages,
-        totalProducts: totalProducts,
+        currentPage,
+        totalPages,
+        totalProducts,
         limit: pageLimit,
         hasNextPage: currentPage < totalPages,
         hasPreviousPage: currentPage > 1,
@@ -193,9 +190,8 @@ router.get('/search', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance, page, limit } = req.query;
-    const userType = req.user.user_type; // 'client', 'vendeur', ou 'association'
+    const userType = req.user.user_type;
 
-    // Pagination parameters
     const currentPage = parseInt(page) || 1;
     const pageLimit = parseInt(limit) || 20;
     const offset = (currentPage - 1) * pageLimit;
@@ -210,14 +206,8 @@ router.get('/', authenticateToken, async (req, res) => {
       '(p.pickup_end_time IS NULL OR (p.created_at::date + p.pickup_end_time) > NOW())'
     ];
 
-    // Filtrer les produits réservés aux associations
-    if (userType === 'association') {
-      // Les associations voient tous les produits (réservés ou non)
-      console.log('[Products] User is association - showing all products');
-    } else {
-      // Les clients ne voient que les produits NON réservés aux associations
+    if (userType !== 'association') {
       conditions.push('(p.reserved_for_associations = false OR p.reserved_for_associations IS NULL)');
-      console.log('[Products] User is client/vendeur - hiding reserved products');
     }
 
     const params = [];
@@ -245,26 +235,26 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const whereClause = conditions.join(' AND ');
 
-    // Count total products (for pagination metadata)
-    const countResult = await db.query(
+    // Count total
+    const countResult = await prisma.$queryRawUnsafe(
       `SELECT COUNT(DISTINCT p.id) as total
       FROM products p
       INNER JOIN users u ON p.vendeur_id = u.id
       LEFT JOIN commerces c ON u.id = c.vendeur_id
       WHERE ${whereClause}`,
-      params
+      ...params
     );
 
-    const totalProducts = parseInt(countResult.rows[0].total);
+    const totalProducts = parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalProducts / pageLimit);
 
-    // Add LIMIT and OFFSET to params
+    // Add LIMIT and OFFSET
     params.push(pageLimit);
     const limitParam = paramIndex++;
     params.push(offset);
     const offsetParam = paramIndex++;
 
-    const result = await db.query(
+    const result = await prisma.$queryRawUnsafe(
       `SELECT
         p.id,
         p.nom,
@@ -299,13 +289,13 @@ router.get('/', authenticateToken, async (req, res) => {
       GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom
       ORDER BY p.created_at DESC
       LIMIT $${limitParam} OFFSET $${offsetParam}`,
-      params
+      ...params
     );
 
     let userLat = latitude ? parseFloat(latitude) : null;
     let userLon = longitude ? parseFloat(longitude) : null;
 
-    let products = result.rows.map(product => {
+    let products = result.map(product => {
       let distance = null;
       let walkingTime = null;
       let transitTime = null;
@@ -325,19 +315,13 @@ router.get('/', authenticateToken, async (req, res) => {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         distance = R * c;
 
-        // Temps à pied : 5 km/h en vitesse moyenne
         walkingTime = Math.round((distance / 5) * 60);
-
-        // Temps à vélo : 15 km/h en vitesse moyenne
         cyclingTime = Math.round((distance / 15) * 60);
 
-        // Temps en transport : utiliser la distance la plus courte
-        // En milieu urbain : métro/bus ~20 km/h en moyenne (avec arrêts)
-        // Pour les courtes distances (<2km), marcher peut être plus rapide
         if (distance < 2) {
-          transitTime = walkingTime; // Marcher est plus rapide pour courtes distances
+          transitTime = walkingTime;
         } else {
-          transitTime = Math.round((distance / 20) * 60); // 20 km/h pour transports en commun
+          transitTime = Math.round((distance / 20) * 60);
         }
       }
 
@@ -350,7 +334,6 @@ router.get('/', authenticateToken, async (req, res) => {
       };
     });
 
-    // Filtrer par distance max si spécifié
     if (maxDistance && userLat && userLon) {
       const maxDistKm = parseFloat(maxDistance);
       products = products.filter(p => p.distance && parseFloat(p.distance) <= maxDistKm);
@@ -360,9 +343,9 @@ router.get('/', authenticateToken, async (req, res) => {
       success: true,
       products,
       pagination: {
-        currentPage: currentPage,
-        totalPages: totalPages,
-        totalProducts: totalProducts,
+        currentPage,
+        totalPages,
+        totalProducts,
         limit: pageLimit,
         hasNextPage: currentPage < totalPages,
         hasPreviousPage: currentPage > 1,
@@ -382,8 +365,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const productId = req.params.id;
     const { latitude, longitude } = req.query;
 
-    const result = await db.query(
-      `SELECT
+    const result = await prisma.$queryRaw`
+      SELECT
         p.id,
         p.nom,
         p.description,
@@ -395,8 +378,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
         p.is_disponible,
         p.is_lot,
         p.created_at,
-        p.pickup_start_time,
-        p.pickup_end_time,
+        p.pickup_start_time::text as pickup_start_time,
+        p.pickup_end_time::text as pickup_end_time,
         p.pickup_instructions,
         c.id as commerce_id,
         c.nom_commerce,
@@ -416,19 +399,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
       LEFT JOIN categories cat ON p.category_id = cat.id
       LEFT JOIN product_items pi ON p.id = pi.product_id
       LEFT JOIN ingredients i ON pi.ingredient_id = i.id
-      WHERE p.id = $1
-      GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom`,
-      [productId]
-    );
+      WHERE p.id = ${productId}::uuid
+      GROUP BY p.id, c.id, c.nom_commerce, c.adresse, c.latitude, c.longitude, cat.nom, u.prenom, u.nom`;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Produit introuvable'
       });
     }
 
-    const product = result.rows[0];
+    const product = result[0];
 
     let distance = null;
     let walkingTime = null;
@@ -451,19 +432,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       distance = R * c;
 
-      // Temps à pied : 5 km/h en vitesse moyenne
       walkingTime = Math.round((distance / 5) * 60);
-
-      // Temps à vélo : 15 km/h en vitesse moyenne
       cyclingTime = Math.round((distance / 15) * 60);
 
-      // Temps en transport : utiliser la distance la plus courte
-      // En milieu urbain : métro/bus ~20 km/h en moyenne (avec arrêts)
-      // Pour les courtes distances (<2km), marcher peut être plus rapide
       if (distance < 2) {
-        transitTime = walkingTime; // Marcher est plus rapide pour courtes distances
+        transitTime = walkingTime;
       } else {
-        transitTime = Math.round((distance / 20) * 60); // 20 km/h pour transports en commun
+        transitTime = Math.round((distance / 20) * 60);
       }
     }
 

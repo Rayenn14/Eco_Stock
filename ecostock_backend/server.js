@@ -6,8 +6,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
@@ -33,6 +33,35 @@ app.use('/api/recipes', recipesRoutes);
 app.use('/api/ingredients', ingredientsRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/reviews', reviewsRoutes);
+
+// PROXY AI - Relaye vers le serveur Python (port 5001)
+app.post('/api/ai/detect', async (req, res) => {
+  try {
+    const response = await fetch('http://localhost:5001/api/ai/detect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Erreur proxy AI:', error.message);
+    res.status(503).json({
+      success: false,
+      error: 'Serveur IA non disponible. Lancez: python ai_server.py'
+    });
+  }
+});
+
+app.get('/api/ai/health', async (req, res) => {
+  try {
+    const response = await fetch('http://localhost:5001/api/ai/health');
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.json({ success: false, status: 'offline' });
+  }
+});
 
 // Route d'accueil
 app.get('/', (req, res) => {

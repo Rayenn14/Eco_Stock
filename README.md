@@ -229,3 +229,230 @@ git pull
 ## Comptes de test
 
 Tu peux créer un compte directement dans l'app ou utiliser la base de données pour en créer un.
+
+
+1️⃣ Comprendre la maintenance de sécurité
+
+La maintenance de sécurité consiste à :
+
+Identifier les vulnérabilités
+
+Les corriger
+
+Prévenir leur réapparition
+
+Améliorer le niveau global de sécurité
+
+Elle repose sur :
+
+🔍 Analyse statique du code (Code Review)
+
+💣 Tests d’intrusion (Pentesting)
+
+🛠 Corrections (Secure Coding)
+
+2️⃣ Étape 1 : Analyse statique du code (Code Review)
+🎯 Objectif
+
+Détecter les vulnérabilités dans le code source, sans exécuter l’application.
+
+🧰 Outil recommandé
+
+SonarQube
+
+🧪 Comment faire ?
+
+Installer SonarQube
+
+Lancer l’analyse sur le projet
+
+Examiner les résultats :
+
+Bugs
+
+Vulnerabilities
+
+Security Hotspots
+
+🔎 Vulnérabilités typiques détectées
+
+(référentiel OWASP Top 10 / MITRE Top 25) :
+
+Injection SQL
+
+XSS
+
+Mots de passe en clair
+
+Mauvaise gestion des exceptions
+
+Données sensibles exposées
+
+Validation d’entrée absente
+
+📌 Exemple
+
+❌ Code vulnérable :
+
+String query = "SELECT * FROM users WHERE login = '" + login + "'";
+
+
+✔ Correction (Secure Coding) :
+
+PreparedStatement ps = conn.prepareStatement(
+  "SELECT * FROM users WHERE login = ?");
+ps.setString(1, login);
+
+3️⃣ Étape 2 : Tests d’intrusion (Pentesting)
+🎯 Objectif
+
+Identifier les failles exploitable en situation réelle
+
+🧰 Outil recommandé
+
+OWASP ZAP
+
+🧪 Comment faire ?
+
+Lancer l’application
+
+Configurer OWASP ZAP comme proxy
+
+Scanner l’application (scan automatique)
+
+Tester manuellement les points sensibles :
+
+Formulaires
+
+Authentification
+
+Sessions
+
+🔎 Vulnérabilités détectables
+
+XSS (Cross-Site Scripting)
+
+CSRF
+
+Faible politique de mots de passe
+
+Cookies non sécurisés
+
+Accès non autorisé
+
+4️⃣ Étape 3 : Identification des vulnérabilités (référentiels)
+
+Tu dois croiser les résultats avec :
+
+✔ OWASP Top 10 Web
+
+✔ MITRE Top 25
+
+✔ OWASP MAS (si mobile)
+
+Exemples de vulnérabilités à choisir (au moins 5) :
+
+Injection SQL
+
+XSS
+
+Authentification faible
+
+Mauvaise gestion des sessions
+
+Exposition de données sensibles
+
+Absence de contrôle d’accès
+
+Configuration de sécurité incorrecte
+
+5️⃣ Étape 4 : Maintenance corrective (corriger au moins 5 vulnérabilités)
+
+Pour chaque vulnérabilité :
+
+📋 Structure attendue (très important pour le rapport)
+
+Nom de la vulnérabilité
+
+Référentiel (OWASP / MITRE)
+
+Description
+
+Impact
+
+Code vulnérable
+
+Correction appliquée
+
+Bonne pratique (Secure Coding)
+
+Exemple
+
+Vulnérabilité : XSS
+
+Référentiel : OWASP A03
+
+Correction :
+
+Échapper les entrées utilisateur
+
+Utiliser des frameworks sécurisés
+
+Validation côté serveur
+
+6️⃣ Étape 5 : Secure Coding (prévention)
+🛡 Bonnes pratiques générales
+
+Validation stricte des entrées
+
+Utilisation de requêtes préparées
+
+Hashage des mots de passe (bcrypt, argon2)
+
+Gestion correcte des exceptions
+
+Headers de sécurité HTTP
+
+Principe du moindre privilège
+
+7️⃣ Étape 6 (optionnelle mais valorisée) : Intégration d’un SSO OAuth2 / OIDC
+🎯 Objectif
+
+Sécuriser l’authentification via un Identity Provider
+
+🧩 Exemples d’IdP
+
+Keycloak
+
+Google
+
+Azure AD
+
+Auth0
+
+🔐 Avantages
+
+Plus de mots de passe stockés localement
+
+Gestion centralisée des accès
+
+Sécurité renforcée
+
+Schéma
+Utilisateur → Application → Identity Provider → Token OAuth2/OIDC
+
+8️⃣ Ce que ton professeur attend concrètement
+
+✔ Utilisation d’outils (SonarQube, ZAP)
+✔ Référence aux standards (OWASP, MITRE)
+✔ Correction d’au moins 5 vulnérabilités
+✔ Démarche structurée de maintenance de sécurité
+✔ Notion de Secure Coding
+
+Si tu veux, je peux :
+
+t’aider à choisir les 5 vulnérabilités les plus simples
+
+rédiger un exemple de chapitre de rapport
+
+t’aider selon ton langage (Java, PHP, Laravel, Spring, Android, etc.)

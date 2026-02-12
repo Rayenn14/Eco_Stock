@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
+const { getCache, setCache } = require('../utils/cache');
 
 // GET /recipes - Récupérer des recettes aléatoires avec pagination
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { limit = 6, offset = 0 } = req.query;
 
-    const result = await db.query(
-      `SELECT
+    // Cache les recettes (TTL: 10 min)
+    const cacheKey = `recipes:page:${limit}:${offset}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    // Requete complexe avec ARRAY_AGG -> $queryRaw
+    const recipes = await prisma.$queryRaw`
+      SELECT
         r.id,
         r.title,
         r.instructions,
@@ -23,18 +32,20 @@ router.get('/', authenticateToken, async (req, res) => {
       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
       GROUP BY r.id, rc.id, rc.nom
       ORDER BY RANDOM()
-      LIMIT $1 OFFSET $2`,
-      [parseInt(limit), parseInt(offset)]
-    );
+      LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
 
-    const countResult = await db.query('SELECT COUNT(*) as total FROM recipes');
+    const countResult = await prisma.recipes.count();
 
-    res.json({
+    const response = {
       success: true,
-      recipes: result.rows,
-      total: parseInt(countResult.rows[0].total),
-      hasMore: parseInt(offset) + result.rows.length < parseInt(countResult.rows[0].total)
-    });
+      recipes,
+      total: countResult,
+      hasMore: parseInt(offset) + recipes.length < countResult
+    };
+
+    await setCache(cacheKey, response, 600);
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching recipes:', error);
     res.status(500).json({
@@ -49,7 +60,6 @@ router.get('/search', authenticateToken, async (req, res) => {
   try {
     const { query, category } = req.query;
 
-    // Si pas de query et pas de category, retourner vide
     if ((!query || query.trim().length < 2) && !category) {
       return res.json({
         success: true,
@@ -62,7 +72,6 @@ router.get('/search', authenticateToken, async (req, res) => {
     const params = [];
     let paramIndex = 1;
 
-    // Si on a une recherche textuelle
     const hasTextSearch = searchQuery.length >= 2;
 
     if (hasTextSearch) {
@@ -81,8 +90,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Construction du score
-    let scoreCalc = '50'; // Score par défaut
+    let scoreCalc = '50';
     if (hasTextSearch) {
       scoreCalc = `CASE
         WHEN LOWER(r.title) = LOWER($1) THEN 100
@@ -95,7 +103,8 @@ router.get('/search', authenticateToken, async (req, res) => {
       END`;
     }
 
-    const result = await db.query(
+    // Requete complexe avec scoring -> $queryRawUnsafe
+    const recipes = await prisma.$queryRawUnsafe(
       `SELECT
         r.id,
         r.title,
@@ -113,12 +122,12 @@ router.get('/search', authenticateToken, async (req, res) => {
       GROUP BY r.id, rc.id, rc.nom
       ORDER BY score DESC, r.created_at DESC
       LIMIT 50`,
-      params
+      ...params
     );
 
     res.json({
       success: true,
-      recipes: result.rows
+      recipes
     });
   } catch (error) {
     console.error('Error searching recipes:', error);
@@ -141,11 +150,10 @@ router.get('/by-ingredients', authenticateToken, async (req, res) => {
       });
     }
 
-    // Convertir la liste d'ingrédients en tableau
     const ingredientList = ingredients.split(',').map(i => i.trim().toLowerCase());
 
-    const result = await db.query(
-      `SELECT
+    const recipes = await prisma.$queryRaw`
+      SELECT
         r.id,
         r.title,
         r.instructions,
@@ -154,7 +162,7 @@ router.get('/by-ingredients', authenticateToken, async (req, res) => {
         r.created_at,
         ARRAY_AGG(DISTINCT i.name ORDER BY i.name) FILTER (WHERE i.id IS NOT NULL) as ingredients,
         COUNT(DISTINCT CASE
-          WHEN LOWER(i.name) = ANY($1::text[]) THEN i.id
+          WHEN LOWER(i.name) = ANY(${ingredientList}::text[]) THEN i.id
         END) as matching_ingredients,
         COUNT(DISTINCT ri.ingredient_id) as total_ingredients
       FROM recipes r
@@ -163,19 +171,17 @@ router.get('/by-ingredients', authenticateToken, async (req, res) => {
       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
       GROUP BY r.id, rc.id, rc.nom
       HAVING COUNT(DISTINCT CASE
-        WHEN LOWER(i.name) = ANY($1::text[]) THEN i.id
+        WHEN LOWER(i.name) = ANY(${ingredientList}::text[]) THEN i.id
       END) > 0
       ORDER BY
         matching_ingredients DESC,
         total_ingredients ASC,
         r.created_at DESC
-      LIMIT 50`,
-      [ingredientList]
-    );
+      LIMIT 50`;
 
     res.json({
       success: true,
-      recipes: result.rows
+      recipes
     });
   } catch (error) {
     console.error('Error finding recipes by ingredients:', error);
@@ -191,8 +197,15 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await db.query(
-      `SELECT
+    // Cache recette par ID (TTL: 30 min)
+    const cacheKey = `recipe:${id}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const recipes = await prisma.$queryRaw`
+      SELECT
         r.id,
         r.title,
         r.instructions,
@@ -204,22 +217,24 @@ router.get('/:id', authenticateToken, async (req, res) => {
       LEFT JOIN recipe_categories rc ON r.recipe_category_id = rc.id
       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-      WHERE r.id = $1
-      GROUP BY r.id, rc.id, rc.nom`,
-      [id]
-    );
+      WHERE r.id = ${parseInt(id)}
+      GROUP BY r.id, rc.id, rc.nom`;
 
-    if (result.rows.length === 0) {
+    if (recipes.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Recette non trouvée'
       });
     }
 
-    res.json({
+    const response = {
       success: true,
-      recipe: result.rows[0]
-    });
+      recipe: recipes[0]
+    };
+
+    await setCache(cacheKey, response, 1800);
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching recipe:', error);
     res.status(500).json({
@@ -243,27 +258,33 @@ router.get('/ingredients/search', authenticateToken, async (req, res) => {
 
     const searchQuery = query.trim().toLowerCase();
 
-    // Rechercher les ingrédients avec scoring
-    const result = await db.query(
-      `SELECT
+    // Cache les recherches d'ingrédients (TTL: 15 min)
+    const cacheKey = `ingredients:search:${searchQuery}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json({ success: true, ingredients: cached });
+    }
+
+    const ingredients = await prisma.$queryRaw`
+      SELECT
         DISTINCT i.id,
         i.name,
         CASE
-          WHEN LOWER(i.name) = $1 THEN 100
-          WHEN LOWER(i.name) LIKE $1 || '%' THEN 90
-          WHEN LOWER(i.name) LIKE '%' || $1 || '%' THEN 70
+          WHEN LOWER(i.name) = ${searchQuery} THEN 100
+          WHEN LOWER(i.name) LIKE ${searchQuery + '%'} THEN 90
+          WHEN LOWER(i.name) LIKE ${'%' + searchQuery + '%'} THEN 70
           ELSE 50
         END as score
       FROM ingredients i
-      WHERE LOWER(i.name) LIKE '%' || $1 || '%'
+      WHERE LOWER(i.name) LIKE ${'%' + searchQuery + '%'}
       ORDER BY score DESC, i.name ASC
-      LIMIT 20`,
-      [searchQuery]
-    );
+      LIMIT 20`;
+
+    await setCache(cacheKey, ingredients, 900);
 
     res.json({
       success: true,
-      ingredients: result.rows
+      ingredients
     });
   } catch (error) {
     console.error('Error searching ingredients:', error);

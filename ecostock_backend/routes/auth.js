@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 
 router.post('/register', async (req, res) => {
   try {
@@ -24,12 +24,12 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    const existingUser = await db.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
+    const existingUser = await prisma.users.findUnique({
+      where: { email },
+      select: { id: true },
+    });
 
-    if (existingUser.rows.length > 0) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: 'Cet email est déjà utilisé'
@@ -38,59 +38,71 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await db.query('BEGIN');
-
-    try {
-      const userResult = await db.query(
-        `INSERT INTO users
-         (prenom, nom, email, password, user_type, nom_association)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, prenom, nom, email, user_type, nom_association`,
-        [prenom || null, nom || null, email, hashedPassword, user_type, nom_association || null]
-      );
-
-      const user = userResult.rows[0];
+    // Transaction Prisma : creer user + commerce si vendeur
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.users.create({
+        data: {
+          prenom: prenom || null,
+          nom: nom || null,
+          email,
+          password: hashedPassword,
+          user_type,
+          nom_association: nom_association || null,
+        },
+        select: {
+          id: true,
+          prenom: true,
+          nom: true,
+          email: true,
+          user_type: true,
+          nom_association: true,
+        },
+      });
 
       let commerce = null;
       if (user_type === 'vendeur') {
-        const commerceResult = await db.query(
-          `INSERT INTO commerces
-           (vendeur_id, nom_commerce, adresse, latitude, longitude)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id, nom_commerce, adresse, latitude, longitude`,
-          [user.id, nom_commerce, adresse_commerce, latitude || null, longitude || null]
-        );
-        commerce = commerceResult.rows[0];
+        commerce = await tx.commerces.create({
+          data: {
+            vendeur_id: user.id,
+            nom_commerce,
+            adresse: adresse_commerce,
+            latitude: latitude || null,
+            longitude: longitude || null,
+          },
+          select: {
+            id: true,
+            nom_commerce: true,
+            adresse: true,
+            latitude: true,
+            longitude: true,
+          },
+        });
       }
 
-      await db.query('COMMIT');
+      return { user, commerce };
+    });
 
-      const token = jwt.sign(
-        { userId: user.id, userType: user.user_type },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '90d' }
-      );
+    const token = jwt.sign(
+      { userId: result.user.id, userType: result.user.user_type },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '90d' }
+    );
 
-      res.status(201).json({
-        success: true,
-        message: 'Inscription réussie',
-        token,
-        user: {
-          id: user.id,
-          prenom: user.prenom,
-          nom: user.nom,
-          email: user.email,
-          user_type: user.user_type,
-          nom_commerce: commerce ? commerce.nom_commerce : null,
-          adresse_commerce: commerce ? commerce.adresse : null,
-          nom_association: user.nom_association,
-        }
-      });
-
-    } catch (error) {
-      await db.query('ROLLBACK');
-      throw error;
-    }
+    res.status(201).json({
+      success: true,
+      message: 'Inscription réussie',
+      token,
+      user: {
+        id: result.user.id,
+        prenom: result.user.prenom,
+        nom: result.user.nom,
+        email: result.user.email,
+        user_type: result.user.user_type,
+        nom_commerce: result.commerce ? result.commerce.nom_commerce : null,
+        adresse_commerce: result.commerce ? result.commerce.adresse : null,
+        nom_association: result.user.nom_association,
+      }
+    });
 
   } catch (error) {
     console.error('Error registration:', error);
@@ -112,29 +124,23 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const result = await db.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
+    const user = await prisma.users.findUnique({
+      where: { email },
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
       });
     }
 
-    const user = result.rows[0];
-
     let commerce = null;
     if (user.user_type === 'vendeur') {
-      const commerceResult = await db.query(
-        'SELECT nom_commerce, adresse FROM commerces WHERE vendeur_id = $1',
-        [user.id]
-      );
-      if (commerceResult.rows.length > 0) {
-        commerce = commerceResult.rows[0];
-      }
+      commerce = await prisma.commerces.findUnique({
+        where: { vendeur_id: user.id },
+        select: { nom_commerce: true, adresse: true },
+      });
     }
 
     if (!user.is_active) {
@@ -211,7 +217,6 @@ router.post('/change-password', async (req, res) => {
       });
     }
 
-    // Vérifier et décoder le token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -222,22 +227,17 @@ router.post('/change-password', async (req, res) => {
       });
     }
 
-    // Récupérer l'utilisateur
-    const result = await db.query(
-      'SELECT * FROM users WHERE id = $1',
-      [decoded.userId]
-    );
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
       });
     }
 
-    const user = result.rows[0];
-
-    // Vérifier le mot de passe actuel
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isPasswordValid) {
@@ -247,14 +247,12 @@ router.post('/change-password', async (req, res) => {
       });
     }
 
-    // Hasher le nouveau mot de passe
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-    // Mettre à jour le mot de passe
-    await db.query(
-      'UPDATE users SET password = $1 WHERE id = $2',
-      [hashedNewPassword, user.id]
-    );
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { password: hashedNewPassword },
+    });
 
     res.json({
       success: true,

@@ -1,22 +1,20 @@
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 
 /**
  * Supprime les produits dont la DLC est dépassée
- * Cette fonction devrait être appelée régulièrement (par exemple, une fois par jour via un cron job)
  */
 async function cleanupExpiredProducts() {
   try {
     console.log('[CLEANUP] Démarrage du nettoyage des produits expirés...');
 
-    const result = await db.query(
-      `DELETE FROM products
-       WHERE dlc < CURRENT_DATE
-       RETURNING id, nom, dlc, vendeur_id`
-    );
+    const result = await prisma.$queryRaw`
+      DELETE FROM products
+      WHERE dlc < CURRENT_DATE
+      RETURNING id, nom, dlc, vendeur_id`;
 
-    if (result.rows.length > 0) {
-      console.log(`[CLEANUP] ${result.rows.length} produit(s) expiré(s) supprimé(s):`);
-      result.rows.forEach(product => {
+    if (result.length > 0) {
+      console.log(`[CLEANUP] ${result.length} produit(s) expiré(s) supprimé(s):`);
+      result.forEach(product => {
         console.log(`  - ${product.nom} (DLC: ${product.dlc})`);
       });
     } else {
@@ -25,8 +23,8 @@ async function cleanupExpiredProducts() {
 
     return {
       success: true,
-      deletedCount: result.rows.length,
-      deletedProducts: result.rows
+      deletedCount: result.length,
+      deletedProducts: result
     };
   } catch (error) {
     console.error('[CLEANUP] Erreur lors du nettoyage des produits expirés:', error);
@@ -39,27 +37,25 @@ async function cleanupExpiredProducts() {
 
 /**
  * Marque comme indisponibles les produits dont le pickup_end_time est dépassé
- * Vérifie si (created_at::date + pickup_end_time) < NOW()
  */
 async function markExpiredByPickupTime() {
   try {
-    const result = await db.query(
-      `UPDATE products
-       SET is_disponible = false, updated_at = NOW()
-       WHERE is_disponible = true
-         AND pickup_end_time IS NOT NULL
-         AND (created_at::date + pickup_end_time) < NOW()
-       RETURNING id, nom, pickup_end_time, created_at`
-    );
+    const result = await prisma.$queryRaw`
+      UPDATE products
+      SET is_disponible = false, updated_at = NOW()
+      WHERE is_disponible = true
+        AND pickup_end_time IS NOT NULL
+        AND (created_at::date + pickup_end_time) < NOW()
+      RETURNING id, nom, pickup_end_time, created_at`;
 
-    if (result.rows.length > 0) {
-      console.log(`[CLEANUP] ${result.rows.length} produit(s) expiré(s) par pickup_end_time`);
+    if (result.length > 0) {
+      console.log(`[CLEANUP] ${result.length} produit(s) expiré(s) par pickup_end_time`);
     }
 
     return {
       success: true,
-      updatedCount: result.rows.length,
-      updatedProducts: result.rows
+      updatedCount: result.length,
+      updatedProducts: result
     };
   } catch (error) {
     console.error('[CLEANUP] Erreur markExpiredByPickupTime:', error);
@@ -74,26 +70,25 @@ async function markOutOfStockProducts() {
   try {
     console.log('[CLEANUP] Marquage des produits en rupture de stock...');
 
-    const result = await db.query(
-      `UPDATE products
-       SET is_disponible = false
-       WHERE stock <= 0 AND is_disponible = true
-       RETURNING id, nom, stock`
-    );
+    const result = await prisma.products.updateMany({
+      where: {
+        stock: { lte: 0 },
+        is_disponible: true,
+      },
+      data: {
+        is_disponible: false,
+      },
+    });
 
-    if (result.rows.length > 0) {
-      console.log(`[CLEANUP] ${result.rows.length} produit(s) marqué(s) comme indisponible(s):`);
-      result.rows.forEach(product => {
-        console.log(`  - ${product.nom} (Stock: ${product.stock})`);
-      });
+    if (result.count > 0) {
+      console.log(`[CLEANUP] ${result.count} produit(s) marqué(s) comme indisponible(s)`);
     } else {
       console.log('[CLEANUP] Aucun produit en rupture de stock');
     }
 
     return {
       success: true,
-      updatedCount: result.rows.length,
-      updatedProducts: result.rows
+      updatedCount: result.count,
     };
   } catch (error) {
     console.error('[CLEANUP] Erreur lors du marquage des produits en rupture:', error);
@@ -131,7 +126,7 @@ async function runCleanup() {
   };
 }
 
-// Si ce script est exécuté directement (node utils/cleanupExpiredProducts.js)
+// Si ce script est exécuté directement
 if (require.main === module) {
   runCleanup()
     .then(() => {

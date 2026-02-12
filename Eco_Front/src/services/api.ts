@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
 const API_URL = 'https://unimpeachably-obliging-eveline.ngrok-free.dev/api';
+const AI_URL = `${API_URL.replace('/api', '')}/api/ai`;
 
 let onTokenExpired: (() => void) | null = null;
 
@@ -768,5 +769,37 @@ export const checkUserReview = async (commerceId: string) => {
       throw error;
     }
     throw new Error('Impossible de verifier l\'avis');
+  }
+};
+
+// ==========================================
+// AI - INGREDIENT DETECTION API
+// ==========================================
+
+export const detectIngredients = async (imageBase64: string) => {
+  try {
+    console.log('[API] POST /ai/detect - Envoi image pour detection IA');
+    const response = await fetch(`${AI_URL}/detect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: imageBase64 }),
+    });
+    const data = await response.json();
+    console.log('[API] AI detection result:', data.success ? `${data.count} ingredients` : 'Failed');
+    return data;
+  } catch (error) {
+    console.error('[API] AI detect error:', error);
+    throw new Error('Impossible de detecter les ingredients. Verifiez que le serveur IA est lance.');
+  }
+};
+
+export const checkAIHealth = async () => {
+  try {
+    const response = await fetch(`${AI_URL}/health`, { method: 'GET' });
+    return await response.json();
+  } catch (error) {
+    return { success: false, status: 'offline' };
   }
 };

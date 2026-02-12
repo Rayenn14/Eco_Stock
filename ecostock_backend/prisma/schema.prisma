@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model categories {
+  id          Int        @id @default(autoincrement())
+  nom         String     @unique @db.VarChar(100)
+  description String?
+  created_at  DateTime?  @default(now()) @db.Timestamp(6)
+  products    products[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model commande_items {
+  id            Int       @id @default(autoincrement())
+  commande_id   String    @db.Uuid
+  product_id    String    @db.Uuid
+  prix_unitaire Decimal   @db.Decimal(10, 2)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  quantite      Int       @default(1)
+  commandes     commandes @relation(fields: [commande_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products      products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([commande_id], map: "idx_commande_items_commande")
+  @@index([commande_id, product_id], map: "idx_commande_items_commande_product")
+  @@index([product_id], map: "idx_commande_items_product")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model commandes {
+  id                                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id                         String           @db.Uuid
+  vendeur_id                        String           @db.Uuid
+  numero_commande                   String           @unique @default(dbgenerated()) @db.VarChar(50)
+  total                             Decimal          @db.Decimal(10, 2)
+  created_at                        DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at                        DateTime?        @default(now()) @db.Timestamp(6)
+  stripe_payment_intent_id          String?          @unique @db.VarChar(255)
+  stripe_payment_status             String?          @default("pending") @db.VarChar(50)
+  paid_at                           DateTime?        @db.Timestamp(6)
+  statut                            String?          @default("pending") @db.VarChar(50)
+  picked_up                         Boolean?         @default(false)
+  commande_items                    commande_items[]
+  users_commandes_client_idTousers  users            @relation("commandes_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_commandes_vendeur_idTousers users            @relation("commandes_vendeur_idTousers", fields: [vendeur_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id], map: "idx_commandes_client")
+  @@index([created_at], map: "idx_commandes_date")
+  @@index([numero_commande], map: "idx_commandes_numero")
+  @@index([vendeur_id], map: "idx_commandes_vendeur")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model commerces {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendeur_id   String    @unique @db.Uuid
+  nom_commerce String    @db.VarChar(255)
+  adresse      String
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  latitude     Decimal?  @db.Decimal(10, 8)
+  longitude    Decimal?  @db.Decimal(11, 8)
+  users        users     @relation(fields: [vendeur_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_commerces_vendeur")
+  reviews      reviews[]
+
+  @@index([vendeur_id], map: "idx_commerces_vendeur")
+}
+
+model favorites {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.Uuid
+  product_id String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  products   products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, product_id])
+  @@index([product_id], map: "idx_favorites_product")
+  @@index([user_id], map: "idx_favorites_user")
+}
+
+model ingredients {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  product_items      product_items[]
+  recipe_ingredients recipe_ingredients[]
+
+  @@index([name], map: "idx_ingredients_name")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model panier {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.Uuid
+  product_id String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  quantite   Int       @default(1)
+  products   products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, product_id], map: "panier_unique_user_product")
+  @@unique([user_id, product_id])
+  @@index([product_id], map: "idx_panier_product")
+  @@index([user_id], map: "idx_panier_user")
+}
+
+model product_items {
+  id            Int          @id @default(autoincrement())
+  product_id    String       @db.Uuid
+  ingredient_id Int?
+  nom           String       @db.VarChar(255)
+  quantite      Int          @default(1)
+  unite         String?      @default("unitÃ©") @db.VarChar(20)
+  created_at    DateTime?    @default(now()) @db.Timestamp(6)
+  ingredients   ingredients? @relation(fields: [ingredient_id], references: [id], onUpdate: NoAction)
+  products      products     @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ingredient_id], map: "idx_product_items_ingredient")
+  @@index([product_id], map: "idx_product_items_product")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model products {
+  id                        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendeur_id                String           @db.Uuid
+  category_id               Int?
+  nom                       String           @db.VarChar(255)
+  description               String?
+  prix                      Decimal          @db.Decimal(10, 2)
+  prix_original             Decimal?         @db.Decimal(10, 2)
+  stock                     Int?             @default(1)
+  image_url                 String?
+  dlc                       DateTime?        @db.Date
+  is_disponible             Boolean?         @default(true)
+  reserved_for_associations Boolean?         @default(false)
+  created_at                DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at                DateTime?        @default(now()) @db.Timestamp(6)
+  is_lot                    Boolean?         @default(false)
+  pickup_start_time         DateTime?        @db.Time(6)
+  pickup_end_time           DateTime?        @db.Time(6)
+  pickup_instructions       String?
+  commande_items            commande_items[]
+  favorites                 favorites[]
+  panier                    panier[]
+  product_items             product_items[]
+  categories                categories?      @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  users                     users            @relation(fields: [vendeur_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([category_id], map: "idx_products_category")
+  @@index([is_disponible], map: "idx_products_disponible")
+  @@index([prix], map: "idx_products_prix")
+  @@index([reserved_for_associations], map: "idx_products_reserved_associations")
+  @@index([vendeur_id], map: "idx_products_vendeur")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model recipe_categories {
+  id          Int       @id @default(autoincrement())
+  nom         String    @unique @db.VarChar(50)
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  recipes     recipes[]
+}
+
+model recipe_ingredients {
+  recipe_id     Int
+  ingredient_id Int
+  ingredients   ingredients @relation(fields: [ingredient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  recipes       recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([recipe_id, ingredient_id])
+  @@index([ingredient_id], map: "idx_recipe_ingredients_ingredient")
+  @@index([recipe_id], map: "idx_recipe_ingredients_recipe")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model recipes {
+  id                 Int                  @id @default(autoincrement())
+  title              String
+  instructions       String?
+  image_name         String?
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  category           String?              @db.VarChar(50)
+  recipe_category_id Int?
+  recipe_ingredients recipe_ingredients[]
+  recipe_categories  recipe_categories?   @relation(fields: [recipe_category_id], references: [id], onUpdate: NoAction, map: "fk_recipes_recipe_category")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model reviews {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  commerce_id String    @db.Uuid
+  note        Int
+  commentaire String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  commerces   commerces @relation(fields: [commerce_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, commerce_id], map: "reviews_unique_user_commerce")
+  @@index([commerce_id], map: "idx_reviews_commerce_id")
+  @@index([user_id], map: "idx_reviews_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id                                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prenom                                String?     @db.VarChar(100)
+  nom                                   String?     @db.VarChar(100)
+  email                                 String      @unique @db.VarChar(255)
+  password                              String      @db.VarChar(255)
+  user_type                             String      @db.VarChar(20)
+  nom_association                       String?     @db.VarChar(255)
+  telephone                             String?     @db.VarChar(20)
+  adresse                               String?
+  ville                                 String?     @db.VarChar(100)
+  code_postal                           String?     @db.VarChar(10)
+  photo_profil                          String?
+  description                           String?
+  is_active                             Boolean?    @default(true)
+  created_at                            DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at                            DateTime?   @default(now()) @db.Timestamp(6)
+  commandes_commandes_client_idTousers  commandes[] @relation("commandes_client_idTousers")
+  commandes_commandes_vendeur_idTousers commandes[] @relation("commandes_vendeur_idTousers")
+  commerces                             commerces?
+  favorites                             favorites[]
+  panier                                panier[]
+  products                              products[]
+  reviews                               reviews[]
+
+  @@index([email], map: "idx_users_email")
+  @@index([user_type], map: "idx_users_type")
+  @@index([ville], map: "idx_users_ville")
+}

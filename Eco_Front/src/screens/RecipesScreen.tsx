@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCart } from '../contexts/CartContext';
+import { Scan } from 'lucide-react-native';
 import { styles } from './RecipesScreen.styles';
 import * as API from '../services/api';
 
@@ -399,7 +400,22 @@ export const RecipesScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Recettes</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>Recettes</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('IngredientScanner')}
+              style={{
+                backgroundColor: '#166534',
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Scan size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#166534" />
@@ -412,7 +428,22 @@ export const RecipesScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recettes</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.headerTitle}>Recettes</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('IngredientScanner')}
+            style={{
+              backgroundColor: '#166534',
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Scan size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>

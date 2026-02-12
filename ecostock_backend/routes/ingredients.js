@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const checkExpiredProducts = require('../middleware/checkExpiredProducts');
 
@@ -15,8 +15,8 @@ router.get('/products/:ingredientName', authenticateToken, async (req, res) => {
 
     console.log(`[Ingredients] Recherche produits pour ingrédient: ${ingredientName}`);
 
-    // Rechercher les produits contenant cet ingrédient
-    const result = await db.query(
+    // Requete complexe avec Haversine -> $queryRaw
+    const products = await prisma.$queryRawUnsafe(
       `SELECT
         p.id,
         p.nom,
@@ -55,15 +55,15 @@ router.get('/products/:ingredientName', authenticateToken, async (req, res) => {
           ELSE p.prix::float
         END ASC
       LIMIT 20`,
-      [ingredientName, latitude || null, longitude || null]
+      ingredientName, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null
     );
 
-    console.log(`[Ingredients] Trouvé ${result.rows.length} produits pour ${ingredientName}`);
+    console.log(`[Ingredients] Trouvé ${products.length} produits pour ${ingredientName}`);
 
     res.json({
       success: true,
-      products: result.rows,
-      count: result.rows.length
+      products,
+      count: products.length
     });
   } catch (error) {
     console.error('[Ingredients] Erreur recherche produits:', error);
