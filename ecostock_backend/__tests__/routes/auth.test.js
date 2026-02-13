@@ -21,8 +21,8 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 
 // Configuration des variables d'environnement
-process.env.JWT_SECRET = 'test-secret-key';
-process.env.JWT_EXPIRE = '7d';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key-for-ci';
+process.env.JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
 
 describe('Routes: Authentication', () => {
   beforeEach(() => {

@@ -35,8 +35,8 @@ class YOLODetector:
         self.device = device
         self.model = YOLO(str(model_path))
 
-        # Classes detectees
-        self.classes = ['tomate', 'oignon', 'ail', 'carotte', 'pomme_de_terre', 'oeuf', 'poulet']
+        # Classes detectees - utiliser les noms du modele directement
+        self.classes = list(self.model.names.values())
 
     def detect(self, image: np.ndarray, conf: float = 0.5) -> List[Dict[str, Any]]:
         """

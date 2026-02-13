@@ -147,12 +147,12 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
     const product = await prisma.products.create({
       data: {
         vendeur_id: req.user.id,
-        category_id: category_id ? parseInt(category_id) : null,
+        category_id: category_id ? Number.parseInt(category_id) : null,
         nom,
         description: description || null,
-        prix: parseFloat(prix),
-        prix_original: prix_original ? parseFloat(prix_original) : null,
-        stock: parseInt(stock),
+        prix: Number.parseFloat(prix),
+        prix_original: prix_original ? Number.parseFloat(prix_original) : null,
+        stock: Number.parseInt(stock),
         image_url: cloudinaryImageUrl || null,
         dlc: new Date(dlc),
         is_lot: is_lot || false,
@@ -174,7 +174,7 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
         await prisma.product_items.create({
           data: {
             product_id: product.id,
-            ingredient_id: parseInt(ingredientId),
+            ingredient_id: Number.parseInt(ingredientId),
             nom,
             quantite: 1,
             unite: 'unite',
@@ -190,7 +190,7 @@ router.post('/products', authenticateToken, isVendeur, async (req, res) => {
       await prisma.product_items.create({
         data: {
           product_id: product.id,
-          ingredient_id: parseInt(ingredient_id),
+          ingredient_id: Number.parseInt(ingredient_id),
           nom,
           quantite: 1,
           unite: 'unite',
@@ -268,12 +268,12 @@ router.put('/products/:id', authenticateToken, isVendeur, async (req, res) => {
     const updateData = { updated_at: new Date() };
     if (nom !== undefined) updateData.nom = nom;
     if (description !== undefined) updateData.description = description;
-    if (prix !== undefined) updateData.prix = parseFloat(prix);
-    if (prix_original !== undefined) updateData.prix_original = parseFloat(prix_original);
-    if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (prix !== undefined) updateData.prix = Number.parseFloat(prix);
+    if (prix_original !== undefined) updateData.prix_original = Number.parseFloat(prix_original);
+    if (stock !== undefined) updateData.stock = Number.parseInt(stock);
     if (cloudinaryImageUrl !== undefined) updateData.image_url = cloudinaryImageUrl;
     if (dlc !== undefined) updateData.dlc = new Date(dlc);
-    if (category_id !== undefined) updateData.category_id = parseInt(category_id);
+    if (category_id !== undefined) updateData.category_id = Number.parseInt(category_id);
     if (is_disponible !== undefined) updateData.is_disponible = is_disponible;
     if (reserved_for_associations !== undefined) updateData.reserved_for_associations = reserved_for_associations;
 
@@ -487,7 +487,7 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
         ordersMap[row.commande_id] = {
           id: row.commande_id,
           numero_commande: row.numero_commande,
-          total: parseFloat(row.total),
+          total: Number.parseFloat(row.total),
           statut: row.statut,
           stripe_payment_status: row.stripe_payment_status,
           paid_at: row.paid_at,
@@ -508,8 +508,8 @@ router.get('/orders', authenticateToken, isVendeur, async (req, res) => {
         image_url: row.product_image,
         dlc: row.product_dlc,
         quantite: row.quantite,
-        prix_unitaire: parseFloat(row.prix_unitaire),
-        line_total: parseFloat(row.line_total),
+        prix_unitaire: Number.parseFloat(row.prix_unitaire),
+        line_total: Number.parseFloat(row.line_total),
         pickup_start_time: row.pickup_start_time,
         pickup_end_time: row.pickup_end_time,
         pickup_instructions: row.pickup_instructions

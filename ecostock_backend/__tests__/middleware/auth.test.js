@@ -12,7 +12,7 @@ jest.mock('../../config/database', () => ({
 const db = require('../../config/database');
 const { authenticateToken } = require('../../middleware/auth');
 
-process.env.JWT_SECRET = 'test-secret-key';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key-for-ci';
 
 describe('Middleware: authenticateToken', () => {
   let req, res, next;
@@ -323,7 +323,7 @@ describe('Middleware: authenticateToken', () => {
     it('should verify token signature', async () => {
       const tokenWithWrongSecret = jwt.sign(
         { userId: '1', userType: 'acheteur' },
-        'wrong-secret'
+        process.env.JWT_SECRET + '-invalid-suffix'
       );
 
       req.headers.authorization = `Bearer ${tokenWithWrongSecret}`;

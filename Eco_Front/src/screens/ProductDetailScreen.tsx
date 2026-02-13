@@ -146,7 +146,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
   };
 
   const discountPercent = product && product.prix_original
-    ? Math.round((1 - parseFloat(product.prix) / parseFloat(product.prix_original)) * 100)
+    ? Math.round((1 - Number.parseFloat(product.prix) / Number.parseFloat(product.prix_original)) * 100)
     : 0;
 
   if (loading) {
@@ -188,8 +188,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
     );
   }
 
-  const shopLat = product.latitude ? parseFloat(product.latitude) : null;
-  const shopLon = product.longitude ? parseFloat(product.longitude) : null;
+  const shopLat = product.latitude ? Number.parseFloat(product.latitude) : null;
+  const shopLon = product.longitude ? Number.parseFloat(product.longitude) : null;
 
   const getOpenStreetMapUrl = (lat: number, lon: number) => {
     // Utiliser l'API OSM standard (tiles.openstreetmap.org)
@@ -238,10 +238,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
           </View>
 
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
+            <Text style={styles.price}>{Number.parseFloat(product.prix).toFixed(2)} EUR</Text>
             {product.prix_original && (
               <Text style={styles.originalPrice}>
-                {parseFloat(product.prix_original).toFixed(2)} EUR
+                {Number.parseFloat(product.prix_original).toFixed(2)} EUR
               </Text>
             )}
           </View>
@@ -263,17 +263,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Commerce</Text>
             <Text style={styles.shopName}>{product.nom_commerce}</Text>
-            {product.commerce_rating && parseFloat(String(product.commerce_rating)) > 0 ? (
+            {product.commerce_rating && Number.parseFloat(String(product.commerce_rating)) > 0 ? (
               <TouchableOpacity
                 style={styles.ratingContainer}
                 onPress={() => setShowReviewsListModal(true)}
               >
                 <Text style={styles.ratingStars}>
-                  {'\u2605'.repeat(Math.round(parseFloat(String(product.commerce_rating))))}
-                  {'\u2606'.repeat(5 - Math.round(parseFloat(String(product.commerce_rating))))}
+                  {'\u2605'.repeat(Math.round(Number.parseFloat(String(product.commerce_rating))))}
+                  {'\u2606'.repeat(5 - Math.round(Number.parseFloat(String(product.commerce_rating))))}
                 </Text>
                 <Text style={styles.ratingText}>
-                  {parseFloat(String(product.commerce_rating)).toFixed(1)} ({product.commerce_reviews_count || 0} avis)
+                  {Number.parseFloat(String(product.commerce_rating)).toFixed(1)} ({product.commerce_reviews_count || 0} avis)
                 </Text>
                 <Text style={styles.viewReviewsLink}>Voir les avis</Text>
               </TouchableOpacity>
@@ -440,7 +440,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
             disabled={isInCart(product.id)}
           >
             <Text style={styles.addToCartText}>
-              {isInCart(product.id) ? '✓ Déjà dans le panier' : `🛒 Ajouter au panier (${(parseFloat(product.prix) * quantity).toFixed(2)} EUR)`}
+              {isInCart(product.id) ? '✓ Déjà dans le panier' : `🛒 Ajouter au panier (${(Number.parseFloat(product.prix) * quantity).toFixed(2)} EUR)`}
             </Text>
           </TouchableOpacity>
         </View>

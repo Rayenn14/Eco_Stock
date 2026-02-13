@@ -77,10 +77,10 @@ export const FilterModal: React.FC<FilterModalProps> = ({
   const handleApply = () => {
     onApply({
       category: selectedCategory,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+      minPrice: minPrice ? Number.parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? Number.parseFloat(maxPrice) : undefined,
       maxDlcDate: maxDlcDate ? maxDlcDate.toISOString().split('T')[0] : undefined,
-      maxDistance: maxDistance ? parseFloat(maxDistance) : undefined,
+      maxDistance: maxDistance ? Number.parseFloat(maxDistance) : undefined,
       sortBy: sortBy as any,
     });
   };

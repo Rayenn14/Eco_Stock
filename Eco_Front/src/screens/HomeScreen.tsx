@@ -119,15 +119,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToProductDetai
           sortedProducts = [...sortedProducts].sort((a, b) => {
             switch (filters.sortBy) {
               case 'price_asc':
-                return parseFloat(a.prix) - parseFloat(b.prix);
+                return Number.parseFloat(a.prix) - Number.parseFloat(b.prix);
               case 'price_desc':
-                return parseFloat(b.prix) - parseFloat(a.prix);
+                return Number.parseFloat(b.prix) - Number.parseFloat(a.prix);
               case 'distance_asc':
                 if (!a.distance || !b.distance) return 0;
-                return parseFloat(a.distance) - parseFloat(b.distance);
+                return Number.parseFloat(a.distance) - Number.parseFloat(b.distance);
               case 'distance_desc':
                 if (!a.distance || !b.distance) return 0;
-                return parseFloat(b.distance) - parseFloat(a.distance);
+                return Number.parseFloat(b.distance) - Number.parseFloat(a.distance);
               default:
                 return 0;
             }

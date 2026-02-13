@@ -27,7 +27,7 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
   const discountPercent = product.prix_original
-    ? Math.round((1 - parseFloat(product.prix) / parseFloat(product.prix_original)) * 100)
+    ? Math.round((1 - Number.parseFloat(product.prix) / Number.parseFloat(product.prix_original)) * 100)
     : 0;
 
   const formatDate = (dateString: string) => {
@@ -78,9 +78,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
         </View>
 
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
+          <Text style={styles.price}>{Number.parseFloat(product.prix).toFixed(2)} EUR</Text>
           {product.prix_original && (
-            <Text style={styles.originalPrice}>{parseFloat(product.prix_original).toFixed(2)} EUR</Text>
+            <Text style={styles.originalPrice}>{Number.parseFloat(product.prix_original).toFixed(2)} EUR</Text>
           )}
         </View>
 

@@ -5,7 +5,28 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Securite: masquer la version Express
+app.disable('x-powered-by');
+
+// CORS configure avec origines autorisees
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:8081', 'http://localhost:19006'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Autoriser les requetes sans origin (mobile, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.endsWith('.ngrok-free.dev')) {
+      return callback(null, true);
+    }
+    callback(new Error('Non autorise par CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

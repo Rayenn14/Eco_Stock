@@ -106,7 +106,7 @@ describe('Business Logic: Product Management', () => {
       const parsed = new Date(dlc);
 
       expect(parsed).toBeInstanceOf(Date);
-      expect(isNaN(parsed.getTime())).toBe(false);
+      expect(Number.isNaN(parsed.getTime())).toBe(false);
     });
 
     it('should detect expired products', () => {

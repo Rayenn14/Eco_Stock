@@ -32,7 +32,7 @@ router.get('/', authenticateToken, async (req, res) => {
       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
       GROUP BY r.id, rc.id, rc.nom
       ORDER BY RANDOM()
-      LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+      LIMIT ${Number.parseInt(limit)} OFFSET ${Number.parseInt(offset)}`;
 
     const countResult = await prisma.recipes.count();
 
@@ -40,7 +40,7 @@ router.get('/', authenticateToken, async (req, res) => {
       success: true,
       recipes,
       total: countResult,
-      hasMore: parseInt(offset) + recipes.length < countResult
+      hasMore: Number.parseInt(offset) + recipes.length < countResult
     };
 
     await setCache(cacheKey, response, 600);
@@ -217,7 +217,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       LEFT JOIN recipe_categories rc ON r.recipe_category_id = rc.id
       LEFT JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       LEFT JOIN ingredients i ON ri.ingredient_id = i.id
-      WHERE r.id = ${parseInt(id)}
+      WHERE r.id = ${Number.parseInt(id)}
       GROUP BY r.id, rc.id, rc.nom`;
 
     if (recipes.length === 0) {

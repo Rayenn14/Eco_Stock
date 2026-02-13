@@ -55,7 +55,7 @@ router.get('/products/:ingredientName', authenticateToken, async (req, res) => {
           ELSE p.prix::float
         END ASC
       LIMIT 20`,
-      ingredientName, latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null
+      ingredientName, latitude ? Number.parseFloat(latitude) : null, longitude ? Number.parseFloat(longitude) : null
     );
 
     console.log(`[Ingredients] Trouvé ${products.length} produits pour ${ingredientName}`);

@@ -69,8 +69,8 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
     const currentYear = currentDate.getFullYear() % 100; // Dernier 2 chiffres
     const currentMonth = currentDate.getMonth() + 1;
 
-    const expYear = parseInt(year);
-    const expMonth = parseInt(month);
+    const expYear = Number.parseInt(year);
+    const expMonth = Number.parseInt(month);
 
     if (expYear < currentYear) return false;
     if (expYear === currentYear && expMonth < currentMonth) return false;

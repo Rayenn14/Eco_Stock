@@ -79,7 +79,7 @@ router.post('/create-intent',
           data: {
             client_id,
             vendeur_id,
-            total: parseFloat(total),
+            total: Number.parseFloat(total),
             statut: 'pending',
             stripe_payment_status: 'pending',
           },
@@ -106,7 +106,7 @@ router.post('/create-intent',
 
       // 3. Créer le PaymentIntent Stripe
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(parseFloat(total) * 100),
+        amount: Math.round(Number.parseFloat(total) * 100),
         currency: 'eur',
         automatic_payment_methods: { enabled: true },
         metadata: {
@@ -286,7 +286,7 @@ router.get('/orders', authenticateToken, async (req, res) => {
         ordersMap[row.commande_id] = {
           id: row.commande_id,
           numero_commande: row.numero_commande,
-          total: parseFloat(row.total),
+          total: Number.parseFloat(row.total),
           statut: row.statut,
           stripe_payment_status: row.stripe_payment_status,
           paid_at: row.paid_at,
@@ -300,8 +300,8 @@ router.get('/orders', authenticateToken, async (req, res) => {
           commerce: {
             nom: row.nom_commerce,
             adresse: row.commerce_address,
-            latitude: row.commerce_latitude ? parseFloat(row.commerce_latitude) : null,
-            longitude: row.commerce_longitude ? parseFloat(row.commerce_longitude) : null,
+            latitude: row.commerce_latitude ? Number.parseFloat(row.commerce_latitude) : null,
+            longitude: row.commerce_longitude ? Number.parseFloat(row.commerce_longitude) : null,
           },
           products: [],
         };
@@ -313,8 +313,8 @@ router.get('/orders', authenticateToken, async (req, res) => {
         image_url: row.product_image,
         dlc: row.product_dlc,
         quantite: row.quantite,
-        prix_unitaire: parseFloat(row.prix_unitaire),
-        line_total: parseFloat(row.line_total),
+        prix_unitaire: Number.parseFloat(row.prix_unitaire),
+        line_total: Number.parseFloat(row.line_total),
         pickup_start_time: row.pickup_start_time,
         pickup_end_time: row.pickup_end_time,
         pickup_instructions: row.pickup_instructions,
@@ -491,7 +491,7 @@ router.get('/seller-orders', authenticateToken, async (req, res) => {
         ordersMap[row.commande_id] = {
           id: row.commande_id,
           numero_commande: row.numero_commande,
-          total: parseFloat(row.total),
+          total: Number.parseFloat(row.total),
           statut: row.statut,
           stripe_payment_status: row.stripe_payment_status,
           paid_at: row.paid_at,
@@ -511,8 +511,8 @@ router.get('/seller-orders', authenticateToken, async (req, res) => {
         image_url: row.product_image,
         dlc: row.product_dlc,
         quantite: row.quantite,
-        prix_unitaire: parseFloat(row.prix_unitaire),
-        line_total: parseFloat(row.line_total),
+        prix_unitaire: Number.parseFloat(row.prix_unitaire),
+        line_total: Number.parseFloat(row.line_total),
       });
     }
 

@@ -175,11 +175,16 @@ class OCRReader:
         if not self._initialized:
             try:
                 import easyocr
-                self.reader = easyocr.Reader(self.languages, gpu=True)
+                import torch
+                use_gpu = torch.cuda.is_available()
+                print(f"[OCR] Initialisation EasyOCR (gpu={use_gpu})...")
+                self.reader = easyocr.Reader(self.languages, gpu=use_gpu)
                 self._initialized = True
+                print("[OCR] EasyOCR pret!")
             except Exception as e:
-                print(f"Erreur initialisation OCR: {e}")
-                print("Installation: pip install easyocr")
+                print(f"[OCR] Erreur initialisation: {e}")
+                import traceback
+                traceback.print_exc()
                 self.reader = None
 
     def read(self, image: np.ndarray, conf: float = 0.5) -> List[Dict[str, Any]]:
@@ -205,12 +210,15 @@ class OCRReader:
             found_ingredients = []
             all_text = []
 
+            print(f"[OCR] Texte brut detecte ({len(results)} zones):")
             for (bbox, text, confidence) in results:
+                print(f"  - '{text}' (conf={confidence:.2f})")
                 if confidence >= conf:
                     all_text.append(text.lower())
 
             # Chercher les mots-cles
             full_text = ' '.join(all_text)
+            print(f"[OCR] Texte filtre (conf>={conf}): '{full_text}'")
 
             for ingredient, keywords in self.KEYWORD_MAPPING.items():
                 for keyword in keywords:

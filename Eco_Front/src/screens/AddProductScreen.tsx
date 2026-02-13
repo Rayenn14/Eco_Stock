@@ -258,12 +258,12 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       return false;
     }
 
-    if (!prix || isNaN(parseFloat(prix)) || parseFloat(prix) <= 0) {
+    if (!prix || Number.isNaN(Number.parseFloat(prix)) || Number.parseFloat(prix) <= 0) {
       Alert.alert('Erreur', 'Le prix doit être un nombre supérieur à 0');
       return false;
     }
 
-    if (!stock || isNaN(parseInt(stock)) || parseInt(stock) <= 0) {
+    if (!stock || Number.isNaN(Number.parseInt(stock)) || Number.parseInt(stock) <= 0) {
       Alert.alert('Erreur', 'Le stock doit être un nombre supérieur à 0.\n\nIndiquez combien de fois ce produit peut être acheté.');
       return false;
     }
@@ -279,12 +279,12 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       return false;
     }
 
-    if (prixOriginal && (isNaN(parseFloat(prixOriginal)) || parseFloat(prixOriginal) <= 0)) {
+    if (prixOriginal && (Number.isNaN(Number.parseFloat(prixOriginal)) || Number.parseFloat(prixOriginal) <= 0)) {
       Alert.alert('Erreur', 'Le prix original doit être un nombre supérieur à 0');
       return false;
     }
 
-    if (prixOriginal && parseFloat(prixOriginal) < parseFloat(prix)) {
+    if (prixOriginal && Number.parseFloat(prixOriginal) < Number.parseFloat(prix)) {
       Alert.alert('Erreur', 'Le prix original doit être supérieur au prix de vente');
       return false;
     }
@@ -303,9 +303,9 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       const productData: any = {
         nom: nom.trim(),
         description: description.trim() || undefined,
-        prix: parseFloat(prix),
-        prix_original: prixOriginal ? parseFloat(prixOriginal) : undefined,
-        stock: parseInt(stock),
+        prix: Number.parseFloat(prix),
+        prix_original: prixOriginal ? Number.parseFloat(prixOriginal) : undefined,
+        stock: Number.parseInt(stock),
         image_url: imageUrl || undefined,
         dlc: formatDateForAPI(dlc),
         category_id: categoryId || undefined,

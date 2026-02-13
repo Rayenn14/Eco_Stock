@@ -14,8 +14,8 @@ router.get('/search', authenticateToken, async (req, res) => {
     const { query, latitude, longitude, page, limit } = req.query;
     const userType = req.user.user_type;
 
-    const currentPage = parseInt(page) || 1;
-    const pageLimit = parseInt(limit) || 50;
+    const currentPage = Number.parseInt(page) || 1;
+    const pageLimit = Number.parseInt(limit) || 50;
     const offset = (currentPage - 1) * pageLimit;
 
     console.log('[Products] GET /search - user_type:', userType, 'query:', query, 'page:', currentPage);
@@ -122,11 +122,11 @@ router.get('/search', authenticateToken, async (req, res) => {
       searchQuery
     );
 
-    const totalProducts = parseInt(countResult[0].total);
+    const totalProducts = Number.parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalProducts / pageLimit);
 
-    let userLat = latitude ? parseFloat(latitude) : null;
-    let userLon = longitude ? parseFloat(longitude) : null;
+    let userLat = latitude ? Number.parseFloat(latitude) : null;
+    let userLon = longitude ? Number.parseFloat(longitude) : null;
 
     const products = result.map(product => {
       let distance = null;
@@ -135,8 +135,8 @@ router.get('/search', authenticateToken, async (req, res) => {
       let cyclingTime = null;
 
       if (userLat && userLon && product.latitude && product.longitude) {
-        const prodLat = parseFloat(product.latitude);
-        const prodLon = parseFloat(product.longitude);
+        const prodLat = Number.parseFloat(product.latitude);
+        const prodLon = Number.parseFloat(product.longitude);
 
         const R = 6371;
         const dLat = (prodLat - userLat) * Math.PI / 180;
@@ -192,8 +192,8 @@ router.get('/', authenticateToken, async (req, res) => {
     const { latitude, longitude, category, minPrice, maxPrice, maxDlcDate, maxDistance, page, limit } = req.query;
     const userType = req.user.user_type;
 
-    const currentPage = parseInt(page) || 1;
-    const pageLimit = parseInt(limit) || 20;
+    const currentPage = Number.parseInt(page) || 1;
+    const pageLimit = Number.parseInt(limit) || 20;
     const offset = (currentPage - 1) * pageLimit;
 
     console.log('[Products] GET / - user_type:', userType, 'page:', currentPage, 'limit:', pageLimit);
@@ -219,12 +219,12 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     if (minPrice) {
-      params.push(parseFloat(minPrice));
+      params.push(Number.parseFloat(minPrice));
       conditions.push(`p.prix >= $${paramIndex++}`);
     }
 
     if (maxPrice) {
-      params.push(parseFloat(maxPrice));
+      params.push(Number.parseFloat(maxPrice));
       conditions.push(`p.prix <= $${paramIndex++}`);
     }
 
@@ -245,7 +245,7 @@ router.get('/', authenticateToken, async (req, res) => {
       ...params
     );
 
-    const totalProducts = parseInt(countResult[0].total);
+    const totalProducts = Number.parseInt(countResult[0].total);
     const totalPages = Math.ceil(totalProducts / pageLimit);
 
     // Add LIMIT and OFFSET
@@ -292,8 +292,8 @@ router.get('/', authenticateToken, async (req, res) => {
       ...params
     );
 
-    let userLat = latitude ? parseFloat(latitude) : null;
-    let userLon = longitude ? parseFloat(longitude) : null;
+    let userLat = latitude ? Number.parseFloat(latitude) : null;
+    let userLon = longitude ? Number.parseFloat(longitude) : null;
 
     let products = result.map(product => {
       let distance = null;
@@ -302,8 +302,8 @@ router.get('/', authenticateToken, async (req, res) => {
       let cyclingTime = null;
 
       if (userLat && userLon && product.latitude && product.longitude) {
-        const prodLat = parseFloat(product.latitude);
-        const prodLon = parseFloat(product.longitude);
+        const prodLat = Number.parseFloat(product.latitude);
+        const prodLon = Number.parseFloat(product.longitude);
 
         const R = 6371;
         const dLat = (prodLat - userLat) * Math.PI / 180;
@@ -335,8 +335,8 @@ router.get('/', authenticateToken, async (req, res) => {
     });
 
     if (maxDistance && userLat && userLon) {
-      const maxDistKm = parseFloat(maxDistance);
-      products = products.filter(p => p.distance && parseFloat(p.distance) <= maxDistKm);
+      const maxDistKm = Number.parseFloat(maxDistance);
+      products = products.filter(p => p.distance && Number.parseFloat(p.distance) <= maxDistKm);
     }
 
     res.json({
@@ -415,12 +415,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
     let walkingTime = null;
     let transitTime = null;
     let cyclingTime = null;
-    let userLat = latitude ? parseFloat(latitude) : null;
-    let userLon = longitude ? parseFloat(longitude) : null;
+    let userLat = latitude ? Number.parseFloat(latitude) : null;
+    let userLon = longitude ? Number.parseFloat(longitude) : null;
 
     if (userLat && userLon && product.latitude && product.longitude) {
-      const prodLat = parseFloat(product.latitude);
-      const prodLon = parseFloat(product.longitude);
+      const prodLat = Number.parseFloat(product.latitude);
+      const prodLon = Number.parseFloat(product.longitude);
 
       const R = 6371;
       const dLat = (prodLat - userLat) * Math.PI / 180;

@@ -136,7 +136,7 @@ router.get('/commerce/:commerceId', authenticateToken, async (req, res) => {
 
       stats = {
         total_reviews: aggregate._count || 0,
-        average_rating: aggregate._avg.note ? parseFloat(aggregate._avg.note.toFixed(1)) : 0,
+        average_rating: aggregate._avg.note ? Number.parseFloat(aggregate._avg.note.toFixed(1)) : 0,
       };
 
       // Cacher les stats 5 minutes
@@ -266,7 +266,7 @@ router.get('/shop-reviews', authenticateToken, async (req, res) => {
 
     const stats = {
       total_reviews: aggregate._count || 0,
-      average_rating: aggregate._avg.note ? parseFloat(aggregate._avg.note.toFixed(1)) : 0,
+      average_rating: aggregate._avg.note ? Number.parseFloat(aggregate._avg.note.toFixed(1)) : 0,
     };
 
     res.json({

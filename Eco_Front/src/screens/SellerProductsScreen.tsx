@@ -119,9 +119,9 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
   const renderProduct = (product: Product) => {
     const statusBadge = getStatusBadge(product.status);
     const discountPercent =
-      product.prix_original && parseFloat(product.prix_original) > 0
+      product.prix_original && Number.parseFloat(product.prix_original) > 0
         ? Math.round(
-            (1 - parseFloat(product.prix) / parseFloat(product.prix_original)) * 100
+            (1 - Number.parseFloat(product.prix) / Number.parseFloat(product.prix_original)) * 100
           )
         : 0;
 
@@ -145,7 +145,7 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
             )}
 
             <View style={styles.productPriceRow}>
-              <Text style={styles.productPrice}>{parseFloat(product.prix).toFixed(2)} EUR</Text>
+              <Text style={styles.productPrice}>{Number.parseFloat(product.prix).toFixed(2)} EUR</Text>
               {discountPercent > 0 && (
                 <View style={styles.discountBadge}>
                   <Text style={styles.discountText}>-{discountPercent}%</Text>

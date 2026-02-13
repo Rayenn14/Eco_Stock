@@ -185,7 +185,7 @@ export const CartScreen: React.FC = () => {
 
   const renderCartItem = ({ item }: { item: any }) => {
     const quantity = item.quantity || 1;
-    const itemTotal = parseFloat(item.prix) * quantity;
+    const itemTotal = Number.parseFloat(item.prix) * quantity;
 
     return (
       <View style={styles.cartItem}>
@@ -241,10 +241,10 @@ export const CartScreen: React.FC = () => {
 
           <View style={styles.itemRight}>
             <Text style={styles.itemPrice}>{itemTotal.toFixed(2)} €</Text>
-            <Text style={styles.unitPrice}>{parseFloat(item.prix).toFixed(2)} € × {quantity}</Text>
+            <Text style={styles.unitPrice}>{Number.parseFloat(item.prix).toFixed(2)} € × {quantity}</Text>
             {item.prix_original && (
               <Text style={styles.itemOriginalPrice}>
-                {parseFloat(item.prix_original).toFixed(2)} €
+                {Number.parseFloat(item.prix_original).toFixed(2)} €
               </Text>
             )}
             <TouchableOpacity

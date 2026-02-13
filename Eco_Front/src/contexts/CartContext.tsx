@@ -91,7 +91,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getCartTotal = () => {
     return cartItems.reduce((total, item) => {
       const quantity = item.quantity || 1;
-      return total + (parseFloat(item.prix) * quantity);
+      return total + (Number.parseFloat(item.prix) * quantity);
     }, 0);
   };
 

@@ -7,12 +7,10 @@ Il tourne sur le port 5001.
 
 import base64
 import io
-import numpy as np
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
 
-# Import du module app_eco local (dans le meme dossier)
 from app_eco import IngredientDetector
 
 app = Flask(__name__)
@@ -44,17 +42,26 @@ def detect_ingredients():
             image_base64 = image_base64.split(',')[1]
 
         image_bytes = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(image_bytes))
-        image_array = np.array(image)
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
 
-        # Detecter les ingredients
+        # Passer l'image PIL directement - _load_image convertira RGB->BGR correctement
         results = detector.detect(
-            image_array,
-            yolo_conf=0.3,
-            cnn_conf=0.7,
-            ocr_conf=0.5,
-            ood_margin=0.4
+            image,
+            yolo_conf=0.4,
+            cnn_conf=0.5,
+            ocr_conf=0.3,
+            ood_margin=1.5
         )
+
+        # Debug: afficher ce que chaque couche detecte
+        details = results.get('details', {})
+        yolo_det = details.get('yolo', [])
+        cnn_det = details.get('cnn', [])
+        ocr_det = details.get('ocr', [])
+        print(f"[AI] YOLO ({len(yolo_det)}): {[d['name'] for d in yolo_det]}")
+        print(f"[AI] CNN  ({len(cnn_det)}): {[d['name'] for d in cnn_det]}")
+        print(f"[AI] OCR  ({len(ocr_det)}): {[d['name'] for d in ocr_det]}")
+        print(f"[AI] Fusion -> {results['ingredients']}")
 
         # Formater la reponse
         ingredients = []

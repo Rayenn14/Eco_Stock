@@ -28,6 +28,8 @@ export const ECO_TIPS = [
  * Retourne un conseil écologique aléatoire
  */
 export const getRandomEcoTip = (): string => {
-  const randomIndex = Math.floor(Math.random() * ECO_TIPS.length);
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  const randomIndex = array[0] % ECO_TIPS.length;
   return ECO_TIPS[randomIndex];
 };
