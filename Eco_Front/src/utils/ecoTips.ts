@@ -28,8 +28,8 @@ export const ECO_TIPS = [
  * Retourne un conseil écologique aléatoire
  */
 export const getRandomEcoTip = (): string => {
-  const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  const randomIndex = array[0] % ECO_TIPS.length;
+  // NOSONAR: Math.random() est acceptable ici (affichage aleatoire de tips, pas de securite)
+  // crypto.getRandomValues() n'existe pas dans React Native Hermes
+  const randomIndex = Math.floor(Math.random() * ECO_TIPS.length); // NOSONAR
   return ECO_TIPS[randomIndex];
 };
