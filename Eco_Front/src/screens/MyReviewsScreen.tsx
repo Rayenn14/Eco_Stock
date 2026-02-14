@@ -65,7 +65,7 @@ export const MyReviewsScreen: React.FC<MyReviewsScreenProps> = ({ onNavigateBack
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
+          onPress: () => void (async () => {
             try {
               const response = await API.deleteReview(reviewId);
               if (response.success) {
@@ -77,7 +77,7 @@ export const MyReviewsScreen: React.FC<MyReviewsScreenProps> = ({ onNavigateBack
             } catch (error: any) {
               Alert.alert('Erreur', error.message);
             }
-          },
+          })(),
         },
       ]
     );
@@ -115,7 +115,7 @@ export const MyReviewsScreen: React.FC<MyReviewsScreenProps> = ({ onNavigateBack
         <Text style={styles.date}>{formatDate(item.created_at)}</Text>
       </View>
 
-      {item.commentaire && (
+      {!!item.commentaire && (
         <Text style={styles.comment}>{item.commentaire}</Text>
       )}
     </View>

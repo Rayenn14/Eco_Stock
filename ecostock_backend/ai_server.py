@@ -5,6 +5,7 @@ Lance ce serveur separement du backend Node.js :
 Il tourne sur le port 5001.
 """
 
+import os
 import base64
 import io
 from flask import Flask, request, jsonify
@@ -14,7 +15,9 @@ from PIL import Image
 from app_eco import IngredientDetector
 
 app = Flask(__name__)
-CORS(app)
+
+allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8081,http://localhost:19006').split(',')
+CORS(app, origins=allowed_origins, methods=['GET', 'POST'])
 
 # Charger le detecteur une seule fois au demarrage
 print("[AI Server] Chargement des modeles IA...")

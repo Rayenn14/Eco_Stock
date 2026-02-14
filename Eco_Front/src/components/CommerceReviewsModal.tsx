@@ -86,7 +86,7 @@ export const CommerceReviewsModal: React.FC<CommerceReviewsModalProps> = ({
 
       <Text style={styles.stars}>{renderStars(item.note)}</Text>
 
-      {item.commentaire && (
+      {!!item.commentaire && (
         <Text style={styles.comment}>{item.commentaire}</Text>
       )}
     </View>

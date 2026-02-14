@@ -173,7 +173,7 @@ export const PaymentScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Tip écologique */}
-        {ecoTip && (
+        {!!ecoTip && (
           <View style={styles.ecoTipContainer}>
             <Text style={styles.ecoTipText}>{ecoTip}</Text>
           </View>

@@ -183,7 +183,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
       <View style={styles.header}>
         <Text style={styles.title}>{recipe.title}</Text>
-        {recipe.category && (
+        {!!recipe.category && (
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(recipe.category) }]}>
             <Text style={styles.categoryText}>{getCategoryLabel(recipe.category)}</Text>
           </View>

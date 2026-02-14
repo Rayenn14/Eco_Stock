@@ -5,7 +5,7 @@
 function levenshteinDistance(str1, str2) {
   const m = str1.length;
   const n = str2.length;
-  const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  const dp = new Array(m + 1).fill(null).map(() => new Array(n + 1).fill(0));
 
   for (let i = 0; i <= m; i++) {
     dp[i][0] = i;
@@ -57,8 +57,8 @@ function normalize(str) {
     .toLowerCase()
     .trim()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
-    .replace(/[^a-z0-9\s-]/g, ''); // Garder seulement lettres, chiffres, espaces et tirets
+    .replaceAll(/[\u0300-\u036f]/, '') // Supprimer les accents
+    .replaceAll(/[^a-z0-9\s-]/, ''); // Garder seulement lettres, chiffres, espaces et tirets
 }
 
 /**

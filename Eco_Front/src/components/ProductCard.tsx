@@ -65,7 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
         </View>
 
         <View style={styles.badges}>
-          {product.category_name && (
+          {!!product.category_name && (
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{product.category_name}</Text>
             </View>
@@ -79,7 +79,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
 
         <View style={styles.priceContainer}>
           <Text style={styles.price}>{Number.parseFloat(product.prix).toFixed(2)} EUR</Text>
-          {product.prix_original && (
+          {!!product.prix_original && (
             <Text style={styles.originalPrice}>{Number.parseFloat(product.prix_original).toFixed(2)} EUR</Text>
           )}
         </View>
@@ -88,14 +88,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           <Text style={styles.shopName} numberOfLines={1}>
             {product.nom_commerce}
           </Text>
-          {product.walking_time && (
+          {!!product.walking_time && (
             <Text style={styles.distance}>
               {product.walking_time} min a pied
             </Text>
           )}
         </View>
 
-        {product.dlc && (
+        {!!product.dlc && (
           <Text style={styles.dlc}>
             DLC: {formatDate(product.dlc)}
           </Text>

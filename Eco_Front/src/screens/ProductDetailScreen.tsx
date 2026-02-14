@@ -239,21 +239,21 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
 
           <View style={styles.priceContainer}>
             <Text style={styles.price}>{Number.parseFloat(product.prix).toFixed(2)} EUR</Text>
-            {product.prix_original && (
+            {!!product.prix_original && (
               <Text style={styles.originalPrice}>
                 {Number.parseFloat(product.prix_original).toFixed(2)} EUR
               </Text>
             )}
           </View>
 
-          {product.description && (
+          {!!product.description && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={styles.description}>{product.description}</Text>
             </View>
           )}
 
-          {product.ingredient_nom && (
+          {!!product.ingredient_nom && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Ingredient</Text>
               <Text style={styles.description}>{product.ingredient_nom}</Text>
@@ -282,7 +282,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
             )}
             <Text style={styles.shopAddress}>{product.adresse}</Text>
 
-            {product.walking_time && (
+            {!!product.walking_time && (
               <View style={styles.distanceContainer}>
                 <View style={styles.distanceItem}>
                   <Text style={styles.distanceIcon}>🚶</Text>
@@ -290,7 +290,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                     {product.walking_time} min a pied
                   </Text>
                 </View>
-                {product.cycling_time && (
+                {!!product.cycling_time && (
                   <View style={styles.distanceItem}>
                     <Text style={styles.distanceIcon}>🚴</Text>
                     <Text style={styles.distanceText}>
@@ -298,7 +298,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                     </Text>
                   </View>
                 )}
-                {product.transit_time && (
+                {!!product.transit_time && (
                   <View style={styles.distanceItem}>
                     <Text style={styles.distanceIcon}>🚌</Text>
                     <Text style={styles.distanceText}>
@@ -310,7 +310,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
               </View>
             )}
 
-            {shopLat && shopLon && (
+            {!!shopLat && !!shopLon && (
               <TouchableOpacity
                 style={styles.mapContainer}
                 onPress={() => openInMaps(shopLat, shopLon, product.adresse)}
@@ -336,7 +336,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
                     {formatTime(product.pickup_end_time)}
                   </Text>
                 </View>
-                {product.pickup_instructions && (
+                {!!product.pickup_instructions && (
                   <View style={styles.instructionsContainer}>
                     <Text style={styles.instructionsIcon}>ℹ️</Text>
                     <Text style={styles.instructionsText}>
@@ -347,7 +347,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
               </View>
             )}
 
-            {product.commerce_id && (
+            {!!product.commerce_id && (
               <TouchableOpacity
                 style={styles.reviewButton}
                 onPress={() => setShowReviewModal(true)}
@@ -362,7 +362,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
               <Text style={styles.infoLabel}>Stock disponible</Text>
               <Text style={styles.infoValue}>{product.stock}</Text>
             </View>
-            {product.dlc && (
+            {!!product.dlc && (
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>DLC</Text>
                 <Text style={styles.infoValue}>{formatDate(product.dlc)}</Text>
@@ -370,7 +370,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
             )}
           </View>
 
-          {product.date_peremption && (
+          {!!product.date_peremption && (
             <View style={styles.infoRow}>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Date de péremption</Text>
@@ -446,14 +446,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = (props) =
         </View>
       </ScrollView>
 
-      {product.commerce_id && (
+      {!!product.commerce_id && (
         <>
           <ReviewModal
             visible={showReviewModal}
             onClose={() => setShowReviewModal(false)}
             commerceId={product.commerce_id}
             commerceName={product.nom_commerce}
-            onReviewSubmitted={() => loadProduct(location?.latitude, location?.longitude)}
+            onReviewSubmitted={() => void loadProduct(location?.latitude, location?.longitude)}
           />
           <CommerceReviewsModal
             visible={showReviewsListModal}

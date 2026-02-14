@@ -54,7 +54,7 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
 
   const validateCardNumber = (number: string): boolean => {
     // Enlever les espaces
-    const cleaned = number.replace(/\s/g, '');
+    const cleaned = number.replaceAll(' ', '');
     // Vérifier que c'est uniquement des chiffres et entre 13-19 caractères
     return /^\d{13,19}$/.test(cleaned);
   };
@@ -83,13 +83,13 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
   };
 
   const formatCardNumber = (text: string): string => {
-    const cleaned = text.replace(/\s/g, '');
+    const cleaned = text.replaceAll(' ', '');
     const chunks = cleaned.match(/.{1,4}/g);
     return chunks ? chunks.join(' ') : cleaned;
   };
 
   const formatExpiryDate = (text: string): string => {
-    const cleaned = text.replace(/\D/g, '');
+    const cleaned = text.replaceAll(/\D/, '');
     if (cleaned.length >= 2) {
       return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
     }
@@ -128,7 +128,7 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
         type: selectedType,
         ...(selectedType === 'visa' || selectedType === 'mastercard'
           ? {
-              last4: cardNumber.replace(/\s/g, '').slice(-4),
+              last4: cardNumber.replaceAll(' ', '').slice(-4),
               expiryDate,
               cardholderName,
             }
@@ -166,11 +166,11 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
+          onPress: () => void (async () => {
             const updatedMethods = paymentMethods.filter((m) => m.id !== id);
             setPaymentMethods(updatedMethods);
             await SecureStore.setItemAsync('paymentMethods', JSON.stringify(updatedMethods));
-          },
+          })(),
         },
       ]
     );
@@ -264,10 +264,10 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
                   </View>
                   <View>
                     <Text style={styles.methodTitle}>{getPaymentLabel(method.type)}</Text>
-                    {method.last4 && (
+                    {!!method.last4 && (
                       <Text style={styles.methodSubtitle}>•••• {method.last4}</Text>
                     )}
-                    {method.expiryDate && (
+                    {!!method.expiryDate && (
                       <Text style={styles.methodExpiry}>Expire: {method.expiryDate}</Text>
                     )}
                   </View>

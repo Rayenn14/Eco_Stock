@@ -78,7 +78,7 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
 
   const validatePhone = (phone: string): boolean => {
     const phoneRegex = /^(\+33|0)[1-9](\d{8})$/;
-    return phone === '' || phoneRegex.test(phone.replace(/\s/g, ''));
+    return phone === '' || phoneRegex.test(phone.replaceAll(' ', ''));
   };
 
   const validateCodePostal = (code: string): boolean => {

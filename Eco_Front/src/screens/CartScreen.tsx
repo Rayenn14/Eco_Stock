@@ -35,7 +35,7 @@ export const CartScreen: React.FC = () => {
   useFocusEffect(
     React.useCallback(() => {
       setEcoTip(getRandomEcoTip());
-      checkProductsAvailability();
+      void checkProductsAvailability();
     }, [cartItems])
   );
 
@@ -202,7 +202,7 @@ export const CartScreen: React.FC = () => {
             <Text style={styles.itemName} numberOfLines={2}>
               {item.nom}
             </Text>
-            {item.category_name && (
+            {!!item.category_name && (
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>{item.category_name}</Text>
               </View>
@@ -242,7 +242,7 @@ export const CartScreen: React.FC = () => {
           <View style={styles.itemRight}>
             <Text style={styles.itemPrice}>{itemTotal.toFixed(2)} €</Text>
             <Text style={styles.unitPrice}>{Number.parseFloat(item.prix).toFixed(2)} € × {quantity}</Text>
-            {item.prix_original && (
+            {!!item.prix_original && (
               <Text style={styles.itemOriginalPrice}>
                 {Number.parseFloat(item.prix_original).toFixed(2)} €
               </Text>
@@ -285,7 +285,7 @@ export const CartScreen: React.FC = () => {
         </Text>
       </View>
 
-      {ecoTip && (
+      {!!ecoTip && (
         <View style={styles.ecoTipContainer}>
           <Text style={styles.ecoTipText}>{ecoTip}</Text>
         </View>

@@ -205,7 +205,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
                   {maxDlcDate ? formatDate(maxDlcDate) : 'Sélectionner une date maximum'}
                 </Text>
               </TouchableOpacity>
-              {maxDlcDate && (
+              {!!maxDlcDate && (
                 <TouchableOpacity
                   style={styles.clearDateButton}
                   onPress={() => setMaxDlcDate(undefined)}

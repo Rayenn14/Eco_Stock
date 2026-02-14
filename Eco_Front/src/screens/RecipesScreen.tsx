@@ -355,7 +355,7 @@ export const RecipesScreen: React.FC = () => {
           <Text style={styles.recipeTitle} numberOfLines={2}>
             {item.title}
           </Text>
-          {item.category && (
+          {!!item.category && (
             <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
               <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
             </View>

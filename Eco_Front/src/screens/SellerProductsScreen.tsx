@@ -77,7 +77,7 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
+          onPress: () => void (async () => {
             try {
               const response = await API.deleteProduct(productId);
               if (response.success) {
@@ -89,7 +89,7 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
             } catch (error: any) {
               Alert.alert('Erreur', error.message);
             }
-          },
+          })(),
         },
       ]
     );
@@ -140,7 +140,7 @@ export const SellerProductsScreen: React.FC<SellerProductsScreenProps> = ({
           {/* Informations */}
           <View style={styles.productInfo}>
             <Text style={styles.productName}>{product.nom}</Text>
-            {product.category_name && (
+            {!!product.category_name && (
               <Text style={styles.productCategory}>{product.category_name}</Text>
             )}
 
