@@ -24,11 +24,13 @@ const LoginScreenWrapper = ({ navigation }: StackScreenProps<AuthStackParamList,
         console.log('[LoginScreenWrapper] Navigate to ForgotPassword');
         navigation.navigate('ForgotPassword');
       }}
-      onLoginSuccess={async (token: string, userData: any) => {
+      onLoginSuccess={(token: string, userData: any) => {
         console.log('[LoginScreenWrapper] Login success');
-        await saveToken(token);
-        await saveUser(userData);
-        signIn();
+        void (async () => {
+          await saveToken(token);
+          await saveUser(userData);
+          signIn();
+        })();
       }}
     />
   );
@@ -45,11 +47,13 @@ const SignupScreenWrapper = ({ navigation }: StackScreenProps<AuthStackParamList
         console.log('[SignupScreenWrapper] Navigate to Login');
         navigation.navigate('Login');
       }}
-      onSignupSuccess={async (token: string, userData: any) => {
+      onSignupSuccess={(token: string, userData: any) => {
         console.log('[SignupScreenWrapper] Signup success');
-        await saveToken(token);
-        await saveUser(userData);
-        signIn();
+        void (async () => {
+          await saveToken(token);
+          await saveUser(userData);
+          signIn();
+        })();
       }}
     />
   );

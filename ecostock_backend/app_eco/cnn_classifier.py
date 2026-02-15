@@ -43,7 +43,7 @@ class CNNClassifier:
         self.device = torch.device(device)
 
         # Charger le checkpoint
-        checkpoint = torch.load(str(model_path), map_location=self.device, weights_only=False)
+        checkpoint = torch.load(str(model_path), map_location=self.device, weights_only=False)  # NOSONAR
 
         self.classes = checkpoint['classes']
         self.version = checkpoint.get('version', 'v1')

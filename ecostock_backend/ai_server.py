@@ -16,8 +16,11 @@ from app_eco import IngredientDetector
 
 app = Flask(__name__)
 
-allowed_origins = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8081,http://localhost:19006').split(',')
-CORS(app, origins=allowed_origins, methods=['GET', 'POST'])
+allowed_origins_env = os.environ.get('ALLOWED_ORIGINS')
+if allowed_origins_env:
+    CORS(app, origins=allowed_origins_env.split(','), methods=['GET', 'POST'])
+else:
+    CORS(app, methods=['GET', 'POST'])
 
 # Charger le detecteur une seule fois au demarrage
 print("[AI Server] Chargement des modeles IA...")

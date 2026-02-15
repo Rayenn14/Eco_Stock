@@ -72,7 +72,7 @@ export const PersonalInfoScreen: React.FC<PersonalInfoScreenProps> = ({
   };
 
   const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
     return emailRegex.test(email);
   };
 

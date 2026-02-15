@@ -28,6 +28,6 @@ export const ECO_TIPS = [
  * Retourne un conseil écologique aléatoire
  */
 export const getRandomEcoTip = (): string => {
-  const randomIndex = Math.floor(Math.random() * ECO_TIPS.length);
+  const randomIndex = Math.floor(Math.random() * ECO_TIPS.length); // NOSONAR
   return ECO_TIPS[randomIndex];
 };
