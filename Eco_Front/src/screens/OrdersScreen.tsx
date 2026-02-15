@@ -193,9 +193,9 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ onNavigateBack }) =>
         <Text style={styles.commerceAddress}>{item.commerce.adresse}</Text>
       </View>
 
-      {item.products && item.products.length > 0 && (
+      {!!item.products && item.products.length > 0 && (
         <>
-          {(item.products[0].pickup_start_time || item.products[0].pickup_end_time) && (
+          {!!(item.products[0].pickup_start_time || item.products[0].pickup_end_time) && (
             <View style={styles.pickupSection}>
               <Text style={styles.sectionTitle}>Horaires de retrait</Text>
               <View style={styles.pickupTimeContainer}>
@@ -205,7 +205,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({ onNavigateBack }) =>
                   {formatTime(item.products[0].pickup_end_time)}
                 </Text>
               </View>
-              {item.products[0].pickup_instructions && (
+              {!!item.products[0].pickup_instructions && (
                 <View style={styles.instructionsContainer}>
                   <Text style={styles.instructionsIcon}>ℹ️</Text>
                   <Text style={styles.instructionsText}>

@@ -154,11 +154,11 @@ export const AddProductScreen: React.FC<AddProductScreenProps> = ({
       [
         {
           text: 'Prendre une photo',
-          onPress: handleTakePhoto,
+          onPress: () => void handleTakePhoto(),
         },
         {
           text: 'Choisir de la galerie',
-          onPress: handleChooseFromGallery,
+          onPress: () => void handleChooseFromGallery(),
         },
         {
           text: 'Annuler',

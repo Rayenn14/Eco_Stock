@@ -69,10 +69,12 @@ export const RootNavigator = () => {
       console.log('[RootNavigator] Sign in');
       setIsAuthenticated(true);
     },
-    signOut: async () => {
+    signOut: () => {
       console.log('[RootNavigator] Sign out');
-      await clearSecureData();
-      setIsAuthenticated(false);
+      void (async () => {
+        await clearSecureData();
+        setIsAuthenticated(false);
+      })();
     },
   };
 

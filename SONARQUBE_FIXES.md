@@ -478,14 +478,90 @@ Les deux lignes sont marquees `NOSONAR` pour que SonarQube les ignore dans les p
 | Faux positif | torch.load NOSONAR | S4507 | 1 | 1 |
 | **Total V3** | | | **7** | **6 fichiers** |
 
-## Resume global (V1 + V2 + V3)
+---
+
+# Corrections SonarQube V4 - EcoStock
+
+## 1 - Promise void return dans RootNavigator (S6544)
+
+**Fichier :** `Eco_Front/src/navigation/RootNavigator.tsx`
+
+La propriete `signOut` du contexte d'authentification etait une fonction `async` assignee a un type `() => void`.
+
+**Avant :**
+```tsx
+signOut: async () => {
+  await clearSecureData();
+  setIsAuthenticated(false);
+},
+```
+
+**Apres :**
+```tsx
+signOut: () => {
+  void (async () => {
+    await clearSecureData();
+    setIsAuthenticated(false);
+  })();
+},
+```
+
+## 2 - Promise void return dans AddProductScreen (S6544) - 2 corrections
+
+**Fichier :** `Eco_Front/src/screens/AddProductScreen.tsx`
+
+Les fonctions `handleTakePhoto` et `handleChooseFromGallery` sont `async` et etaient passees directement comme `onPress` dans un `Alert.alert`.
+
+**Avant :**
+```tsx
+{ text: 'Prendre une photo', onPress: handleTakePhoto },
+{ text: 'Choisir de la galerie', onPress: handleChooseFromGallery },
+```
+
+**Apres :**
+```tsx
+{ text: 'Prendre une photo', onPress: () => void handleTakePhoto() },
+{ text: 'Choisir de la galerie', onPress: () => void handleChooseFromGallery() },
+```
+
+## 3 - Boolean leaked values dans OrdersScreen (S6840) - 3 corrections
+
+**Fichier :** `Eco_Front/src/screens/OrdersScreen.tsx`
+
+Trois conditionnels dans le rendu des commandes utilisaient des valeurs non-booleennes avec `&&`.
+
+**Corrections :**
+```tsx
+// Avant
+{item.products && item.products.length > 0 && (
+{(item.products[0].pickup_start_time || item.products[0].pickup_end_time) && (
+{item.products[0].pickup_instructions && (
+
+// Apres
+{!!item.products && item.products.length > 0 && (
+{!!(item.products[0].pickup_start_time || item.products[0].pickup_end_time) && (
+{!!item.products[0].pickup_instructions && (
+```
+
+---
+
+## Resume V4
+
+| Niveau | Type | Regle | Corrections | Fichiers |
+|--------|------|-------|-------------|----------|
+| Reliability | Promise void return | S6544 | 3 | 2 |
+| Reliability | Boolean leaked values | S6840 | 3 | 1 |
+| **Total V4** | | | **6** | **3 fichiers** |
+
+## Resume global (V1 + V2 + V3 + V4)
 
 | Version | Corrections | Fichiers |
 |---------|-------------|----------|
 | V1 | 110 | 21 |
 | V2 | 45 | 19 |
 | V3 | 7 | 6 |
-| **Total** | **162** | **35 fichiers uniques** |
+| V4 | 6 | 3 |
+| **Total** | **168** | **36 fichiers uniques** |
 
 ---
 
