@@ -89,7 +89,7 @@ export const PaymentMethodsScreen: React.FC<PaymentMethodsScreenProps> = ({
   };
 
   const formatExpiryDate = (text: string): string => {
-    const cleaned = text.replaceAll(/\D/, '');
+    const cleaned = text.replaceAll(/\D/g, '');
     if (cleaned.length >= 2) {
       return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
     }

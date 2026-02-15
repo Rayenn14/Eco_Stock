@@ -299,7 +299,7 @@ describe('Business Logic: Product Management', () => {
 
     it('should normalize category names', () => {
       const category = 'Fruits-Légumes';
-      const normalized = category.toLowerCase().replaceAll(/[éè]/, 'e');
+      const normalized = category.toLowerCase().replaceAll(/[éè]/g, 'e');
 
       expect(normalized).toBe('fruits-legumes');
     });

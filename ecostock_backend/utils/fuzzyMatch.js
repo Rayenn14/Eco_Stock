@@ -57,8 +57,8 @@ function normalize(str) {
     .toLowerCase()
     .trim()
     .normalize('NFD')
-    .replaceAll(/[\u0300-\u036f]/, '') // Supprimer les accents
-    .replaceAll(/[^a-z0-9\s-]/, ''); // Garder seulement lettres, chiffres, espaces et tirets
+    .replaceAll(/[\u0300-\u036f]/g, '') // Supprimer les accents
+    .replaceAll(/[^a-z0-9\s-]/g, ''); // Garder seulement lettres, chiffres, espaces et tirets
 }
 
 /**
